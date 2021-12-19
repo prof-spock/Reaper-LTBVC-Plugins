@@ -68,6 +68,6 @@ so, for example, the lilypond export script has the action name
 A detailed manual is available [here][reference:manual].
 
 [reference:ltbvc]:   https://github.com/prof-spock/LilypondToBandVideoConverter
-[reference:manual]:  https://github.com/prof-spock/Reaper-LTBVC-Plugins/raw/master/Reaper-LTBVC-Scripts.pdf.
+[reference:manual]:  https://github.com/prof-spock/Reaper-LTBVC-Plugins/raw/master/Reaper-LTBVC-Scripts.pdf
 [reference:reapack]: https://reapack.com/
 [reference:reaper]:  https://reaper.fm/
