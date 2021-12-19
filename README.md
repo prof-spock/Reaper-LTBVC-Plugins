@@ -58,12 +58,10 @@ Alternatively -&nbsp;and much easier!&nbsp;- you can use the
 [ReaPack][reference:reapack] plugin and do an automatic install via
 the `index.xml` file in this repository.
 
-After the installation via ReaPack you have to add the scripts
-`ExportLilypond.lua`, `ImportMidi.lua`,
-`MakeRegionsFromRegionStructureTrack.lua` and
-`NormalizeStructuredVoiceTracks.lua` from the subdirectory
-`Scripts/DrTT-LTBVC-Lua/ReaperPluginsForLTBVC/src` of the Reaper
-installation into the action list via the `Actions` menu.
+After the installation via ReaPack all the scripts can be found in the
+action list of the Reaper installation via the prefix `LTBVCPlugins_`;
+so, for example, the lilypond export script has the action name
+`LTBVCPlugins_ExportLilypond.lua`.
 
 ## Further Information
 

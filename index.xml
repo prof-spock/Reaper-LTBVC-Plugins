@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<index version="1" name="DrTT-LTBVC_(Lua)"
+       desc="Lua Plugins for the LilypondToBandVideoConverter (by Dr. Thomas Tensi)">
+  <metadata>
+    <description><![CDATA[{\rtf1\ansi\ansicpg1252\deff0\nouicompat\deflang2057\deflangfe2057
+{\fonttbl
+  {\f0\froman\fprq2\fcharset0 Times New Roman;}
+  {\f1\fnil\fcharset2 Symbol;}
+}
+{\colortbl ;\red0\green0\blue255;}
+{\*\mmathPr\mnaryLim0\mdispDef1\mwrapIndent1440 }\viewkind4\uc1 
+\pard\nowidctlpar\sa200\sl276\slmult1\f0\fs28\b Reaper Plugins for the LilypondToBandVideoConverter\b0\par
+\fs22 Dr. Thomas Tensi, 2021\fs28\par
+\fs24\b Overview\b0\par
+\fs22 The \ldblquote Reaper Plugins for the
+ LilypondToBandVideoConverter\rdblquote  software package provides Lua
+ plugins for being used in the Reaper DAW
+ ({{\field{\*\fldinst{HYPERLINK https://reaper.fm }}{\fldrslt{https://reaper.fm\ul0\cf0}}}});
+ they assist in using the LilypondToBandVideoConverter
+ ({{\field{\*\fldinst{HYPERLINK https://github.com/prof-spock/LilypondToBandVideoConverter }}{\fldrslt{https://github.com/prof-spock/LilypondToBandVideoConverter\ul0\cf0}}}})
+ toolchain for generating notation videos from arrangement text
+ files.\par
+
+The four scripts provide the following services:\par
+
+\pard{\pntext\f1\'B7\tab}{\*\pn\pnlvlblt\pnf1\pnindent0{\pntxtb\'B7}}\nowidctlpar\fi-360\li720\sa200\sl276\slmult1\b ExportLilypond.lua:\b0
+ transforms the notes of the selected MIDI item into a textual
+ lilypond note/chord sequence and returns them in a text box,\par
+{\pntext\f1\'B7\tab}\b ImportMidi.lua:\b0
+ scans the current project for tracks with single MIDI items and
+ replaces those by the corresponding track in an associated MIDI file
+ filtering out unwanted MIDI items before import,\par
+{\pntext\f1\'B7\tab}\b MakeRegionsFromStructureTrack.lua:\b0
+ either makes regions from a region structure track with structural MIDI
+ items or generates that structure track with MIDI items from the current
+ regions, and\par
+{\pntext\f1\'B7\tab}\b NormalizeStructuredMidiTracks.lua:\b0
+ scans all tracks with some specific prefix and normalizes their
+ enclosed MIDI items by removing reverb, chorus and delay control
+ codes and setting velocities to some default\par
+
+\pard\nowidctlpar\sa200\sl276\slmult1 They rely on several additional
+ Lua modules provided in the package.\par
+}]]></description>
+    <link rel="website">https://github.com/prof-spock/Reaper-LTBVC-Plugins</link>
+  </metadata>
+  <category name="PluginsForLTBVC"
+            desc="Lua Plugins for the LilypondToBandVideoConverter (by Dr. Thomas Tensi)">
+    <reapack name="LTBVC" type="script">
+      <version name="1.0" author="Dr. Thomas Tensi" time="2021-12-17T00:00:00Z">
+        <changelog><![CDATA[Initial Release]]></changelog>
+        <source file="doc/Reaper-LTBVC-Scripts.pdf">https://github.com/prof-spock/Reaper-LTBVC-Plugins/raw/d1cc95d2601df32814676da2fed0318e1d4a2b8a/Reaper-LTBVC-Scripts.pdf</source>
+        <source file="Base.lua">https://github.com/prof-spock/Reaper-LTBVC-Plugins/raw/d1cc95d2601df32814676da2fed0318e1d4a2b8a/src/Base.lua</source>
+        <source file="Class.lua">https://github.com/prof-spock/Reaper-LTBVC-Plugins/raw/d1cc95d2601df32814676da2fed0318e1d4a2b8a/src/Class.lua</source>
+        <source file="LTBVCPlugins_ExportLilypond.lua" main="main">https://github.com/prof-spock/Reaper-LTBVC-Plugins/raw/d1cc95d2601df32814676da2fed0318e1d4a2b8a/src/ExportLilypond.lua</source>
+        <source file="LTBVCPlugins_ImportMidi.lua" main="main">https://github.com/prof-spock/Reaper-LTBVC-Plugins/raw/d1cc95d2601df32814676da2fed0318e1d4a2b8a/src/ImportMidi.lua</source>
+        <source file="Lilypond.lua">https://github.com/prof-spock/Reaper-LTBVC-Plugins/raw/d1cc95d2601df32814676da2fed0318e1d4a2b8a/src/Lilypond.lua</source>
+        <source file="List.lua">https://github.com/prof-spock/Reaper-LTBVC-Plugins/raw/d1cc95d2601df32814676da2fed0318e1d4a2b8a/src/List.lua</source>
+        <source file="Logging.lua">https://github.com/prof-spock/Reaper-LTBVC-Plugins/raw/d1cc95d2601df32814676da2fed0318e1d4a2b8a/src/Logging.lua</source>
+        <source file="LTBVCPlugins_MakeRegionsFromRegionStructureTrack.lua" main="main">https://github.com/prof-spock/Reaper-LTBVC-Plugins/raw/d1cc95d2601df32814676da2fed0318e1d4a2b8a/src/MakeRegionsFromRegionStructureTrack.lua</source>
+        <source file="Map.lua">https://github.com/prof-spock/Reaper-LTBVC-Plugins/raw/d1cc95d2601df32814676da2fed0318e1d4a2b8a/src/Map.lua</source>
+        <source file="LTBVCPlugins_NormalizeStructuredVoiceTracks.lua" main="main">https://github.com/prof-spock/Reaper-LTBVC-Plugins/raw/d1cc95d2601df32814676da2fed0318e1d4a2b8a/src/NormalizeStructuredVoiceTracks.lua</source>
+        <source file="OperatingSystem.lua">https://github.com/prof-spock/Reaper-LTBVC-Plugins/raw/d1cc95d2601df32814676da2fed0318e1d4a2b8a/src/OperatingSystem.lua</source>
+        <source file="Reaper.lua">https://github.com/prof-spock/Reaper-LTBVC-Plugins/raw/d1cc95d2601df32814676da2fed0318e1d4a2b8a/src/Reaper.lua</source>
+        <source file="Set.lua">https://github.com/prof-spock/Reaper-LTBVC-Plugins/raw/d1cc95d2601df32814676da2fed0318e1d4a2b8a/src/Set.lua</source>
+        <source file="String.lua">https://github.com/prof-spock/Reaper-LTBVC-Plugins/raw/d1cc95d2601df32814676da2fed0318e1d4a2b8a/src/String.lua</source>
+      </version>
+    </reapack>
+  </category>
+</index>
