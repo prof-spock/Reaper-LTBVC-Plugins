@@ -1,0 +1,709 @@
+% -*- coding: utf-8 -*- 
+\documentclass[titlepage,twoside,12pt,a4paper]{report}
+    \usepackage[T1]{fontenc}
+
+    \usepackage[font={small,it}]{caption}  % ==> captionof
+    \usepackage[usenames]{color}           % ==> color
+    \usepackage{colortbl}                  % ==> cellcolor
+    \usepackage{chngcntr}                  % ==> counterwithout
+    \usepackage{enumitem}                  % ==> ttDescription
+    \usepackage{etoolbox}                  % ==> patchcmd
+    \usepackage{fancyhdr}                  % ==> fancyhead
+    \usepackage{graphicx}                  % ==> includegraphics
+    \usepackage[section]{placeins}         % ==> FloatBarrier
+    \usepackage{titlesec}                  % ==> titleformat
+
+    %-------------------
+    %-- CONFIGURATION --
+    %-------------------
+
+    \newcommand{\currentVersion}{1.0}
+    \newcommand{\currentVersionDate}{2021-12-17}
+
+    %------------
+    %-- TITLES --
+    %------------
+
+    % chapter
+    \titleformat{\chapter}
+                {\normalfont \LARGE \bfseries}
+                {\thechapter.~}
+                {0pt}
+                {\LARGE}
+
+    % this alters "before" spacing (the second length argument) to 0
+    \titlespacing*{\chapter}{0pt}{-20pt}{10pt}
+    \patchcmd{\chapter}{\thispagestyle{plain}}{\thispagestyle{fancy}}{}{}
+
+    \setcounter{secnumdepth}{3}
+    \setcounter{tocdepth}{3}
+
+    % number figures continously
+    \counterwithout{figure}{chapter}
+
+    %-----------------------
+    %-- HEADERS / FOOTERS --
+    %-----------------------
+
+    \pagestyle{fancy}
+    %--
+    \fancyhead[LE]{\slshape \rightmark}
+    \fancyhead[CE]{~}
+    \fancyhead[RE]{~}
+    \fancyhead[LO]{~}
+    \fancyhead[CO]{~}
+    \fancyhead[RO]{\slshape \leftmark}
+    %--
+    \fancyfoot[LE]{\thepage}
+    \fancyfoot[CE]{~}
+    \fancyfoot[RE]{Dr.~Thomas Tensi}
+    \fancyfoot[LO]{Reaper Effect Plugins for LTBVC, v\currentVersion}
+    \fancyfoot[CO]{~}
+    \fancyfoot[RO]{\thepage}
+
+    %---------------------------------
+    %-- PAGE SIZE AND OTHER LENGTHS --
+    %---------------------------------
+
+    \renewcommand{\headrulewidth}{0.4pt}
+    \renewcommand{\footrulewidth}{0.4pt}
+    %\addtolength{\headheight}{\baselineskip}
+    \addtolength{\voffset}{-5mm}
+    \setlength{\topmargin}{0mm}
+    \setlength{\headheight}{15pt}
+    \addtolength{\headsep}{-5mm}
+    \addtolength{\textheight}{20mm}
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{5pt}
+
+    \bibliographystyle{plain}
+
+    %-------------------
+    %-- MISC COMMANDS --
+    %-------------------
+
+    \newcommand{\arrowTo}{\(\rightarrow\)}
+    \newcommand{\bsl}{\textbackslash}
+
+    \newcommand{\centeredExternalPicture}[2]{%
+        \begin{center}
+            \externalPicture{#1}{#2}%
+        \end{center}
+    }
+
+    \newenvironment{centeredFigure}%
+                   {\begin{figure}[tb]\begin{center}}%
+                   {\end{center}\end{figure}}
+
+    \newenvironment{centeredFigureHere}%
+                   {\begin{figure}[h]\begin{center}}%
+                   {\end{center}\end{figure}}
+
+    \newcommand{\comment}[1]{\medskip \textbf{#1} \medskip}
+
+    \newcommand{\embeddedCode}[1]{\textsf{#1}}
+    \newcommand{\externalPicture}[2]{%
+        \includegraphics[scale=#1]{figures/#2}%
+    }
+
+    \newcommand{\hyperlink}[1]{\textsf{\color{blue}#1}}
+    \newcommand{\meta}[1]{\guillemotleft #1\guillemotright}
+
+    \newcommand{\SoX}{SoX}
+    \newcommand{\TODO}[1]{\emph{\color{red}\textbf{TODO:} #1}}
+
+    \newenvironment{ttDescription}%
+                   {\begin{description}[%
+                         style=nextline, labelwidth=0pt,
+                         itemindent=\dimexpr-5mm, leftmargin=1cm%
+                   ]}
+                   {\end{description}}
+
+    %-------------------
+    %-- ABBREVIATIONS --
+    %-------------------
+
+    \newcommand{\ltbvcLong}{LilypondToBandVideoConverter}
+    \newcommand{\ltbvc}{\embeddedCode{ltbvc}}
+    \newcommand{\ltbvcplugins}{Reaper Plugins for the \ltbvcLong}
+
+    \setcounter{secnumdepth}{3}
+    \setcounter{tocdepth}{3}
+
+    %-------------------
+    %-- IMAGE SCALING --
+    %-------------------
+
+    \newcommand{\prefsScalingFactor}{0.35}
+    \newcommand{\tcpScalingFactor}{0.45}
+    
+%############################################################
+\begin{document}
+
+\title{\ltbvcplugins\\(Version \currentVersion)}
+\author{Dr.~Thomas Tensi}
+\date{\currentVersionDate}
+\maketitle
+
+\tableofcontents
+
+%=====================
+\chapter{Introduction}
+%=====================
+
+%--------------------
+\section{Overview}
+%--------------------
+
+The ``\ltbvcplugins'' package provides Lua plugins for being used in
+the Reaper DAW~\cite{reference:reaper}; they assist in using the
+\ltbvcLong\ tool chain for generating notation videos from arrangement
+text files.
+
+\ltbvcLong\ (or short \ltbvc,
+\cite{reference:lilypondToBandVideoConverter}) is a command line audio
+processing tool written in Python for Unix, Windows and Mac OS that
+uses standard command-line tools to convert a music piece (a song)
+written in the lilypond notation to
+
+\begin{itemize}
+    \item a PDF score of the whole song,
+    \item several PDF voice extracts,
+    \item a MIDI file with all voices (with additional preprocessing
+          applied to achieve some humanization),
+    \item audio mix files with several subsets of voices (specified
+          by configuration), and
+    \item video files for several output targets visualizing the score
+          notation pages and having the mixes as mutually selectable
+          audio tracks as backing tracks.
+\end{itemize}
+
+Because that command-line oriented approach is a bit tedious, the
+current package provides several scripts for the Reaper DAW to make
+this process easier.
+
+%-----------------------------
+\section{Available Scripts}
+%-----------------------------
+
+The following scripts are provided:
+\begin{ttDescription}
+
+    \item[ExportLilypond.lua:] transforms the notes of the selected
+         MIDI item into a textual lilypond note/chord sequence and
+         returns them in a text box,
+  
+    \item[ImportMidi.lua:] scans the current project for tracks with
+         single MIDI items with names conforming to some pattern and
+         replaces those by the corresponding track in an associated
+         MIDI file filtering out unwanted MIDI items before import,
+
+    \item[MakeRegionsFromRegionStructureTrack.lua:] either makes regions
+         based on a track with structural MIDI items or generates that
+         region structure track with MIDI items from the current
+         regions, and
+
+    \item[NormalizeStructuredVoiceTracks.lua:] scans all tracks with
+         some specific prefix and normalizes their enclosed MIDI items
+         by removing reverb, chorus and delay control codes, setting
+         note velocities to some default and quantizing the note start
+         and end positions
+
+\end{ttDescription}
+
+%====================================
+\chapter{Installation of the Plugins}
+%====================================
+
+The installation is as follows:
+\begin{enumerate}
+
+    \item Copy the \ltbvcplugins\ archive from the repository in
+          \cite{reference:ltbvcPlugins} and unpack it to some
+          temporary directory.
+  
+    \item Close the Reaper application (if open).
+
+    \item Copy the lua-files from the archive subdirectory
+          \embeddedCode{src} into the \embeddedCode{Lua} sub-directory
+          of the Reaper installation (typically in \embeddedCode{\bsl
+          Program Files\bsl Reaper\bsl Lua} or
+          \embeddedCode{/Applications/Reaper.app/Lua} in MacOS).
+
+    \item If helpful, also copy the documentation file from the
+          archive subdirectory \embeddedCode{doc} to the
+          \embeddedCode{Lua} sub-directory.
+
+    \item Restart Reaper.  You should now be able to access the
+          scripts as actions in the Actions menu of Reaper.  It is
+          helpful to define some keyboard shortcuts for those actions
+          for a quicker access.
+
+\end{enumerate}
+
+Alternatively ---~and a little bit easier~--- you can use the ReaPack
+plugin \cite{reference:reapack} and do an automatic install via the
+\embeddedCode{index.xml} file in the repository
+\cite{reference:ltbvcPlugins}.  After the installation via ReaPack all
+the scripts can be found in the action list of the Reaper installation
+via the prefix \embeddedCode{LTBVCPlugins\_}; so, for example, the
+lilypond export script has the action name
+\embeddedCode{LTBVCPlugins\_ExportLilypond.lua}.
+
+
+%===================================
+\chapter{Description of the Plugins}
+%===================================
+
+%-----------------------------------
+\section{Motivation for the Plugins}
+\label{section:motivation}
+%-----------------------------------
+
+Motivation for all the scripts presented here is to allow input and
+adaptation of MIDI notes of some arrangement in the Reaper DAW, but
+then easily integrate that into a \ltbvc\ pipeline.  Part of this
+approach is also that one can quickly import the tracks of the
+generated MIDI file from that external pipeline for checking whether
+the \ltbvc\ and the DAW project are in sync.
+
+To be able to do this, one should first organize MIDI items in the DAW
+corresponding to the voices and the musical structure of the piece
+into \emph{structured voice tracks}.  It is also helpful when the
+names of those tracks adhere to some naming pattern (because one of
+the tools relies on that).
+
+When you have your project organized in such a way is then possible to
+\begin{itemize}
+
+    \item reflect the musical structure as regions based on the items
+          in some track (see section~\ref{section:makeRegions}),
+
+    \item normalize the structured voice tracks by removing unwanted
+          control codes and quantizing the note positions to a raster
+          compatible with the later lilypond export (see
+          section~\ref{section:normalizeTracks}),
+
+    \item export MIDI items in the structured voice tracks as lilypond
+          fragments (see section~\ref{section:exportLilypond}), and
+
+    \item repeatedly import the MIDI file generated by \ltbvc\ into
+          special project tracks e.g. for a detailed comparison with the
+          structured voice tracks (see section~\ref{section:importMidi}).
+
+\end{itemize}
+          
+\begin{centeredFigure}
+    \centeredExternalPicture{\tcpScalingFactor}
+                            {structuredVoiceTracks.png}
+    \caption{Structured MIDI Representation of Demo Song from \ltbvc}
+    \label{figure:structuredVoiceTracks}
+\end{centeredFigure}
+
+Figure~\ref{figure:structuredVoiceTracks} shows the
+structuring of the demo song from the \ltbvc.  Note that this Reaper
+DAW file is also included in the current distribution.
+
+
+%-----------------------------
+\section{ExportLilypond}
+\label{section:exportLilypond}
+%-----------------------------
+
+The command here is applied to some selected MIDI item and transforms
+its notes into a textual lilypond note/chord sequence and finally
+returns it in the Reaper message box.  One can then copy the text into
+the clipboard and insert it into a lilypond file for the song and
+later processing by the \ltbvc.
+
+The notes produced by the script are in English notation.  That means
+for example, an \(f\sharp\) (\textbf{f~s}harp) note is ``fs'', an
+\(e\flat\) (\textbf{e~f}lat) note is ``ef''.  The algorithm analyzes
+the underlying MIDI notes along the measures and groups them into the
+least possible number of notes still conforming to score guidelines.
+Chords are automatically detected.
+
+This generation of notes is dependent on a line in the project
+settings defining the key.  E.g.\ the line \embeddedCode{key=f} in
+figure~\ref{figure:exportLilypond-settings} defines the key of some
+song to be ``f'' (major).  Only major keys can be defined, but,
+however, this only affects whether accidentals used shall be sharps or
+flats.
+
+\begin{centeredFigure}
+    \centeredExternalPicture{\prefsScalingFactor}
+                            {exportLilypond-settings.png}
+    \caption{Key Definition for ExportLilypond}
+    \label{figure:exportLilypond-settings}
+\end{centeredFigure}
+
+All instruments have a default octave defined by their names, where
+the note sequences start as follows:
+\begin{itemize}
+    \item bass, keyboardBottom \arrowTo\ \(C_1\),
+    \item keyboard \arrowTo\ \(C_2\),
+    \item guitar, keyboardTop, strings \arrowTo\ \(C_3\),
+    \item vocals \arrowTo\ \(C_4\), and
+    \item drums, percussion \arrowTo\ drum clef
+\end{itemize}
+
+So, for example, a guitar fragment will start with the lilypond text
+\embeddedCode{\bsl relative~c'} (\(= C_3\)), a bass fragment with
+\embeddedCode{\bsl relative~c,} (\(= C_1\)).
+
+Activating the action on some MIDI item puts the resulting MIDI
+fragment into the message box as shown in
+figure~\ref{figure:exportLilypond-bass}.
+
+\begin{centeredFigure}
+    \centeredExternalPicture{\tcpScalingFactor}
+                            {exportLilypond-results_bass.png}
+    \caption{Exporting a Bass MIDI Item}
+    \label{figure:exportLilypond-bass}
+\end{centeredFigure}
+
+Doing the same for some drum MIDI item puts the resulting MIDI
+fragment also into the message box as shown in
+figure~\ref{figure:exportLilypond-drums}, but uses drum notation
+instead.  This is triggered by the item name starting with either
+``drums '' or ``percussion ''.
+
+\begin{centeredFigure}
+    \centeredExternalPicture{\tcpScalingFactor}
+                            {exportLilypond-results_drums.png}
+    \caption{Exporting a Drums MIDI Item}
+    \label{figure:exportLilypond-drums}
+\end{centeredFigure}
+
+The durations in the output are optimized for being conformant to
+standard notation practice and also switch from and to triplets when
+appropriate.
+
+A note will be split into parts tied together when its duration is not
+allowed its start position due to notation standards.  For example,
+when in a measure a quarter note follows a sixteenth note, it will be
+split into a sixteenth note and a dotted eighth note to conform to
+notation guidelines.  Figure~\ref{figure:exportLilypond-noteSplit}
+shows how a simple note sequence is transformed by the algorithm.
+
+\begin{centeredFigure}
+    \begin{tabular}{ccc}
+        \externalPicture{0.7}{exportLilypond-noteSplitA.png}
+        &\qquad
+        &\externalPicture{0.7}{exportLilypond-noteSplitB.png}\\
+        notes before split&&notes after split
+    \end{tabular}
+    \caption{Splitting Notes on Musical Raster Positions}
+    \label{figure:exportLilypond-noteSplit}
+\end{centeredFigure}
+
+Note that the minimum note duration allowed is a \(32^{nd}\)-note or a
+\(32^{nd}\)-triplet.  If the item converted is not quantized
+accordingly, typically some strange note durations like ``e?77?'' will
+occur in the result where this signifies a note with a duration of 77
+MIDI ticks (which is 77/240 of a quarter note) that cannot be split
+into meaningful durations.
+
+
+%-------------------------
+\section{ImportMidi}
+\label{section:importMidi}
+%-------------------------
+
+The \ltbvc\ pipeline produces a temporary MIDI file with some
+humanization applied.  It is helpful to import that file into tracks
+repeatedly to see the consequences of changes in the lilypond file.
+
+Doing this manually is tedious, especially because MIDI tracks in the
+project may be at arbitrary positions.
+
+Fortunately the tracks generated by the \ltbvc\ have a predictable
+structure and naming of tracks.  Hence this script scans the DAW
+project for tracks conforming to that convention: those are tracks
+with a single MIDI item, where its item name ends with ``.mid'' and it
+gives the voice name followed by the name of the MIDI file.
+
+For example, a MIDI item ``bass - wonderful\_song-std.mid'' is the
+bass voice in an imported MIDI file ``wonderful\_song-std.mid'' from
+the \ltbvc.
+
+\begin{centeredFigure}
+    \centeredExternalPicture{\prefsScalingFactor}
+                            {importMidi-settings.png}
+    \caption{Relative Path Definition for MIDI Import}
+    \label{figure:importMIDI-settings}
+\end{centeredFigure}
+
+For the import the location of the MIDI file has to be specified; this
+is done by the configuration variable \embeddedCode{midiFilePath} in
+the project settings (see figure~\ref{figure:importMIDI-settings}).
+It gives the relative path of the directory containing the MIDI file
+from \ltbvc.
+
+The processing by the script is as follows:
+\begin{itemize}
+    \item The referenced MIDI file is imported into new temporary tracks.
+    \item All existing tracks with matching names (``\meta{instrument
+          name} - \meta{MIDI file name}'' are updated from the imported
+          tracks.
+    \item The new temporary tracks are deleted.
+    \item Some filtering is done on the imported MIDI items: pan,
+          reverb and volume control codes are removed (because they
+          shall be provided by DAW controls and effects).
+    \item All those items are set to ``locked'' (because they should
+          not be changed manually, because they will be overwritten by
+          the next import).
+\end{itemize}
+
+The example song has four MIDI tracks for each of the voices;
+figure~\ref{figure:importMIDI-tracks} shows those tracks, their items
+with the appropriated names in the demo Reaper project.
+
+\begin{centeredFigure}
+    \centeredExternalPicture{\tcpScalingFactor}
+                            {importMidi-tracks.png}
+    \caption{``Updateable'' MIDI Tracks of Demo Song}
+    \label{figure:importMIDI-tracks}
+\end{centeredFigure}
+
+
+%--------------------------------------------
+\section{MakeRegionsFromRegionStructureTrack}
+\label{section:makeRegions}
+%--------------------------------------------
+
+As mentioned in section~\ref{section:exportLilypond} it is practical
+to structure the MIDI items according to the song structure.  Reaper
+provides so-called \emph{regions} along the timeline, which are very
+helpful in organizing a project.
+
+Unfortunately they are a bit tedious to use: duplicating them or
+coloring them requires many clicks even when you use the
+``Region/Marker Manager'' of Reaper.
+
+The script \embeddedCode{MakeRegionsFromRegionStructureTrack}
+simplifies this at the expense of using another track with the region
+information encoded into items.  It makes regions from the MIDI items
+in a track called ``STRUCTURE'' by copying their positions and also
+reuses their coloring and naming.  So you can quickly adjust the MIDI
+items in the structure track and then regenerate the regions from it.
+
+It is also possible to vice versa generate that ``STRUCTURE'' track
+with this script.
+
+When the script is started the dialog of
+figure~\ref{figure:makeRegions-dialog} appears.
+\begin{centeredFigureHere}
+    \centeredExternalPicture{0.7}{makeRegions-dialog.png}
+    \caption{Selection Dialog for MakeRegionsFromRegionStructureTrack}
+    \label{figure:makeRegions-dialog}
+\end{centeredFigureHere}
+
+Depending on the selection (assuming you do not select cancel) the
+following happens:
+\begin{itemize}
+
+    \item For a selection of ``Yes'' (create regions) a track called
+          ``STRUCTURE'' is searched for.  First each region is
+          deleted.  Then for each MIDI item on that track a new region
+          is created having the same start time, end time, name and
+          color as the item.
+
+    \item For a selection of ``No'' (create structure track) a track
+          called ``STRUCTURE'' is searched for and is created if
+          non-existent.  Each existing MIDI item on that track is
+          deleted.  Then for each region a new MIDI item is created on
+          that track having the same start time, end time, name and
+          color as the region.
+
+\end{itemize}
+
+Figure~\ref{figure:makeRegions-tracks} shows the structure track and
+the generated regions for the demo song.
+
+\begin{centeredFigureHere}
+    \centeredExternalPicture{0.55}{makeRegions-tracks.png}
+    \caption{Regions and Structure Track in Comparison}
+    \label{figure:makeRegions-tracks}
+\end{centeredFigureHere}
+
+
+%---------------------------------------
+\section{NormalizeStructuredVoiceTracks}
+\label{section:normalizeTracks}
+%---------------------------------------
+
+The list of MIDI items for the structured approach as describe in
+section~\ref{section:exportLilypond} should be located in tracks that
+adhere to some naming pattern.
+
+In that case, the script \embeddedCode{NormalizeStructuredVoiceTracks}
+can be used.  It scans all MIDI items in structured MIDI voice tracks
+and normalizes their note velocity, quantizes note to the raster
+necessary for later export and removes unwanted MIDI control events.
+
+Only those MIDI items in tracks are considered whose track names
+conform to a certain naming pattern.  That pattern is ---~as with
+other scripts~--- defined in a line in the project settings using the
+variable \embeddedCode{structuredMidiTrackNamePattern} and it
+specifies the regular expression a voice track name has to match.  For
+example, the line
+\embeddedCode{structuredMidiTrackNamePattern="S\textvisiblespace.*"}
+in figure~\ref{figure:normalizeStructuredTracks-settings} defines the
+name pattern for the voice track names to be ``S\textvisiblespace.*''.
+This means the name of a voice structure track must start with a
+capital ``S'' followed by a blank character.  Note that that is the
+default when you do not specify any pattern.
+
+\begin{centeredFigureHere}
+    \centeredExternalPicture{\prefsScalingFactor}
+                            {normalizeStructuredTracks-settings.png}
+    \caption{Settings for Selection of Structured MIDI Tracks}
+    \label{figure:normalizeStructuredTracks-settings}
+\end{centeredFigureHere}
+
+Each MIDI item in the voice structure tracks is transformed as
+follows:
+\begin{itemize}
+
+    \item Note velocities are set to a default value (80).
+
+    \item Note positions and lengths are moved to the raster necessary
+          for later lilypond export by the script
+          \embeddedCode{Exportlilypond}.
+
+    \item MIDI control codes for volume, pan and reverb are removed
+          (because they shall be provided by DAW controls and effects).
+
+\end{itemize}
+
+%==================
+\chapter{Demo Song}
+%==================
+
+Included in this installation is a Reaper demo file with tracks for
+the demo song of the \ltbvc.
+
+The following tracks are contained in the project:
+\begin{itemize}
+    \item a region structure track,
+
+    \item structured voice tracks for all four voices (vocals, bass,
+          guitar and drums) routed to the corresponding effect tracks,
+
+    \item the MIDI tracks from the generated MIDI file routed to the
+          corresponding effect tracks,
+
+    \item raw audio tracks (generated by the \ltbvc\ pipeline) routed
+          to the corresponding effect tracks,
+
+    \item effect tracks enhancing MIDI or raw audio tracks, and
+
+    \item refined audio tracks (generated by the \ltbvc\ pipeline)
+\end{itemize}
+
+Because this project file should work with a standard Reaper
+installation without any additional plugins, the MIDI to audio
+conversion is done with the stock \embeddedCode{ReaSamplOmatic} plugin
+plus some external samples; also the audio effects for refinement are
+stock effects.  This is acceptable for trying out the plugins
+described in this document, but does not faithfully reproduce the sound
+of the external pipeline.
+
+If you want to emulate the \SoX\ effects from the external pipeline
+(as mentioned in the \ltbvc\ documentations) you'll have to install
+specific \SoX\ emulation plugins (for example, the \SoX\ plugins from
+\cite{reference:soxPlugins}) and then adapt the effect tracks
+accordingly.
+
+For a realistic impression of the external MIDI to audio conversion,
+one would need a soundfont player fully compatible with the fluidsynth
+player~\cite{reference:fluidsynth} used in the
+\ltbvc\ pipeline. Otherwise one has to accept the slight sound
+deviation caused by using another player like, for example,
+sforzando~\cite{reference:sforzando}.
+
+But while the \SoX\ plugins can produce a bit-identical reproduction
+of the audio of the external effects pipeline, the bit-identical
+rendition of the MIDI to audio conversion is almost impossible in a
+DAW: even if a player were algorithmically identical to fluidsynth,
+the sound would typically not be identical because of inherent
+differences in the sample buffer windows or phases of internal
+modulators between internal and external sound rendering pipelines.
+
+%===========================
+\chapter{Coping with Errors}
+%===========================
+
+If one of the scripts does not work as expected or even issues an
+error message, how can you find out what really went wrong?
+
+All the scripts do some fine-grained entry-exit-tracing of relevant
+function calls into a log file; its last lines should give you some
+indication about the error.
+
+The log files are written into a directory given by the environment
+variables \embeddedCode{REAPERLOGS}, \embeddedCode{TEMP} and
+\embeddedCode{TMP} (in the order given).  If none of those variables
+is set, the directory ``/tmp'' is used.
+
+The log file name is ``reaper\_'' followed by the script name, so, for
+example, the script exportLilypond writes its log to the file
+``reaper\_exportLilypond.log'' in the directory given by one of the
+environment variables given above.
+
+Figure~\ref{figure:logging} shows how a log file looks like.  Each
+line shows either an entry of a function (``\(>>\)''), an exit from
+a function (``\(<<\)'') and a log line within a function
+(``\(--\)'') together with a time indication.
+
+\begin{centeredFigureHere}
+    \centeredExternalPicture{0.55}{logging.png}
+    \caption{Extract from a Log File (for ImportMidi)}
+    \label{figure:logging}
+\end{centeredFigureHere}
+
+
+%=========================================
+\addcontentsline{toc}{chapter}{References}
+\begin{thebibliography}{LTBVCPlugins}
+%=========================================
+
+    \bibitem[Fluidsynth]{reference:fluidsynth}
+        \textit{FluidSynth - Software synthesizer based on the
+                SoundFont~2 specifications}.\\
+        \hyperlink{https://fluidsynth.org}
+
+    \bibitem[LTBVC]{reference:lilypondToBandVideoConverter}
+        Dr. Thomas Tensi.\\
+        \textit{LilypondToBandVideoConverter - Generator for Notation
+                Backing Track Videos from Lilypond Files.}\\
+        \hyperlink{https://github.com/prof-spock/LilypondToBandVideoConverter}
+
+    \bibitem[LTBVCPlugins]{reference:ltbvcPlugins}
+        Dr. Thomas Tensi.\\
+        \textit{Reaper Plugins for the LilypondToBandVideoConverter.}\\
+        \hyperlink{https://github.com/prof-spock/Reaper-LTBVC-Plugins}
+
+    \bibitem[ReaPack]{reference:reapack}
+        Christian Fillion.\\
+        \textit{ReaPack: Package manager for REAPER.}\\
+        \hyperlink{https://reapack.com}
+
+    \bibitem[Reaper]{reference:reaper}
+        Cockos Incorporated.\\
+        \textit{Reaper Digital Audio Workstation.}\\
+        \hyperlink{https://reaper.fm}
+
+    \bibitem[Sforzando]{reference:sforzando}
+        \textit{Sforzando - a free, highly SFZ2.0 compliant player}.\\
+        \hyperlink{https://www.plogue.com/products/sforzando.html}
+
+    \bibitem[SoXPlugins]{reference:soxPlugins}
+        Dr. Thomas Tensi.\\
+        \textit{SoX Plugins - A Reimplementation of the \SoX\
+                Commandline Processor as DAW Plugins.}\\
+        \hyperlink{https://github.com/prof-spock/LilypondToBandVideoConverter}
+
+\end{thebibliography}
+\end{document}
