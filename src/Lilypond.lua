@@ -400,8 +400,9 @@ Lilypond      = {}
                                    end
 
             local st = "{"
-            local positionList =
-                      SplitHandler._measurePositionToDurationsMap:keyList()
+            local positionSet = 
+                      SplitHandler._measurePositionToDurationsMap:keySet()
+            local positionList = List:makeFromIterable(positionSet)
             local isFirst = true
 
             positionList:sort(comparisonProc)
@@ -509,9 +510,9 @@ Lilypond      = {}
 
             -- sort all duration lists in decreasing order
             local comparisonProc = function (a, b)  return a > b  end
-            keyList = SplitHandler._measurePositionToDurationsMap:keyList()
+            keySet = SplitHandler._measurePositionToDurationsMap:keySet()
 
-            for _, key in keyList:iterator() do
+            for _, key in keySet:iterator() do
                 local durationList =
                           SplitHandler._measurePositionToDurationsMap:at(key)
                 Logging.traceF(fName, "--: DL(%s) before - %s",

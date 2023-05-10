@@ -72,6 +72,42 @@ List = Class:make("List")
        return result
     end
 
+    -- --------------------
+
+    function List.makeFromArray (cls, array)
+        -- Constructs a list from the elements in <array>
+
+        local result = cls:make()
+
+        for _, element in ipairs(array) do
+            result:append(element)
+        end
+
+        return result
+    end
+
+    -- --------------------
+
+    function List.makeFromIterable (cls, iterable)
+        -- Constructs a list from the elements in <iterable>
+
+        local result = cls:make()
+
+        for _, element in iterable:iterator() do
+            result:append(element)
+        end
+
+        return result
+    end
+
+    -- --------------------
+
+    function List:clone ()
+       -- Does a shallow clone of <self>
+
+        return List:makeFromArray(self._data)
+    end
+
     -- ·····················
     -- string representation
     -- ·····················
@@ -82,7 +118,9 @@ List = Class:make("List")
         local st = "["
 
         for i, value in ipairs(self._data) do
-            st = st .. iif(i == 1, "", ", ") .. tostring(value)
+            local ch = iif(type(value) == "string", "'", "")
+            local valueAsString = ch .. tostring(value) .. ch
+            st = st .. iif(i == 1, "", ", ") .. valueAsString
         end
 
         st = st .. "]"
@@ -139,6 +177,23 @@ List = Class:make("List")
 
     -- --------------------
 
+    function List:atWithDefault (index, defaultValue)
+        -- Returns element at <index> if available, else
+        -- <defaultValue>
+
+        local result
+        
+        if 1 <= index and index <= #(self._data) then
+            result = at(i)
+        else
+            result = defaultValue
+        end
+
+        return result
+    end
+
+    -- --------------------
+
     function List:first ()
         -- Returns first element of list
 
@@ -152,6 +207,14 @@ List = Class:make("List")
 
         local lastIndex = #(self._data)
         return self._data[lastIndex]
+    end
+
+    -- --------------------
+
+    function List:unpack ()
+        -- Returns element from list for parallel assignment
+
+        return table.unpack(self._data)
     end
 
     -- ················
@@ -232,6 +295,20 @@ List = Class:make("List")
         return result
     end
 
+    -- --------------------
+
+    function List:slice (startIndex, endIndex)
+        -- Returns sublist from <startIndex> to <endIndex>
+
+        local result = List:make()
+
+        for i = startIndex, endIndex do
+            result:append(self._data[i])
+        end
+
+        return result
+    end
+
     -- ················
     -- sorting
     -- ················
@@ -249,8 +326,8 @@ List = Class:make("List")
 
     function List:applyToAll (changeProc)
         -- Changes all elements in list by <changeProc>: if changeProc
-        -- returns a value, this is assigned to the element, otherwise
-        -- an in-place change is assumed
+        -- returns a value, element is replaced by it, otherwise an
+        -- in-place change is assumed
 
         for i, value in ipairs(self._data) do
             local newValue = changeProc(value)

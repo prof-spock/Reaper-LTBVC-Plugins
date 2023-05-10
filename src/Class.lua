@@ -168,8 +168,18 @@ ClassWithPeer = {}
         result.__index = result
         result.__gc = ClassWithPeer._freeInstance
         result.makeInstance = ClassWithPeer._makeInstance
+        result.internalRepresentation = ClassWithPeer.internalRepresentation
         result._peerObjectToWrapperMap = {}
         return result
+    end
+
+    -- --------------------
+
+    function ClassWithPeer:internalRepresentation ()
+        -- Returns the associated peer object as the internal
+        -- representation of the given object
+
+        return self._peerObject
     end
 
 -- =================

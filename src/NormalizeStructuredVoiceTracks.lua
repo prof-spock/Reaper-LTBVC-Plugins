@@ -91,6 +91,9 @@ function _processTake (take)
 
     Logging.trace(">>: take = %s", take)
 
+    -- ensure that there is no accidental shift in the start time
+    take:setMediaStartOffset(0)
+
     _removeUnwantedControlCodes(take)
     _setNoteVelocitiesAndPositions(take)
 
@@ -143,7 +146,7 @@ function _removeUnwantedControlCodes (take)
 
     for i, controlEvent in midiControlEventList:reversedIterator() do
         local controlCode = controlEvent.messagePart1
-        local isRelevant = _controlCodeSet.contains(controlCode)
+        local isRelevant = _controlCodeSet:contains(controlCode)
         Logging.trace("--: index = %d, cc = %d, isRelevant = %s",
                       i, controlCode, isRelevant)
 

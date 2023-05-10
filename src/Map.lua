@@ -6,7 +6,7 @@
 -- IMPORTS
 -- ====================
 
-require("List")
+require("Set")
 
 -- ====================
 
@@ -54,6 +54,26 @@ Map = Class:make("Map")
 
     -- --------------------
 
+    function Map.makeFromPairArray (cls, array)
+        -- Creates a map from a simple array with alternating keys and
+        -- values
+
+        local result = cls:make()
+        local key
+
+        for i, value in ipairs(array) do
+            if i % 2 == 1 then
+                key = value
+            else
+                result._data[key] = value
+            end
+        end
+
+        return result
+    end
+
+    -- --------------------
+
     function Map.makeFromTuple (cls, simpleMap)
         -- Creates a map from a simple map definition
 
@@ -64,6 +84,20 @@ Map = Class:make("Map")
        end
 
        return result
+    end
+
+    -- --------------------
+
+    function Map.clone (cls, otherMap)
+        -- Creates a shallow clone of <otherMap>
+
+        local result = cls:make()
+
+        for key, value in pairs(otherMap._data) do
+            result._data[key] = value
+        end
+
+        return result
     end
 
     -- ·····················
@@ -77,8 +111,12 @@ Map = Class:make("Map")
         local isFirst = true
 
         for key, value in pairs(self._data) do
+            local ch = iif(type(key) == "string", "'", "")
+            local keyAsString = ch .. tostring(key) .. ch
+            ch = iif(type(value) == "string", "'", "")
+            local valueAsString = ch .. tostring(value) .. ch
             st = (st .. iif(isFirst, "", ", ")
-                  .. tostring(key) .. " => " .. tostring(value))
+                  .. keyAsString .. " => " .. valueAsString)
             isFirst = false
         end
 
@@ -98,13 +136,13 @@ Map = Class:make("Map")
 
     -- --------------------
 
-    function Map:keyList ()
-        -- Returns list of all keys in map
+    function Map:keySet ()
+        -- Returns set of all keys in map
 
-        local result = List:make()
+        local result = Set:make()
 
         for key, _ in pairs(self._data) do
-            result:append(key)
+            result:include(key)
         end
 
         return result

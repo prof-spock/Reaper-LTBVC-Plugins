@@ -1,6 +1,6 @@
 -- Reaper - object-oriented wrapper around the Reaper API functions
 -- 
--- author: Dr. Thomas Tensi, 2019-08
+-- author: Dr. Thomas Tensi, 2019-2023
 
 -- =======================
 -- IMPORTS
@@ -61,20 +61,67 @@ require("String")
         text        = "text"
     }
 
+    -- --------------------
+
+    local function _trackSendModeKindToString (value)
+        local result
+        
+        if value == 0 then
+            result = "postFader"
+        elseif value == 1 then
+            result = "preFX"
+        else
+            result = "postFX"
+        end
+
+        return result
+    end
+
+    -- --------------------
+
+    local TrackSendModeKind = {
+        postFader  = 0,
+        preFX      = 1,
+        deprecated = 2,
+        postFX     = 3,
+        __tostring = _trackSendModeKindToString
+    }
+
+    -- --------------------
+
+    function TrackSendModeKind.makeFromString (st)
+        local result
+        local uppercasedSt = String.toUppercase(st)
+
+        if uppercasedSt == "POSTFADER" then
+            result = TrackSendModeKind.postFader
+        elseif uppercasedSt == "PREFX" then
+            result = TrackSendModeKind.preFX
+        else
+            result = TrackSendModeKind.postFX
+        end
+
+        return result
+    end
+
     -- ----------------------------
     -- CLASS AND MODULE DEFINITIONS
     -- ----------------------------
 
-    local ConfigData    = Class:make("ConfigData")
-    local Generics      = {}
-    local MediaSource   = Class:make("MediaSource")
-    local MediaItem     = ClassWithPeer:make("MediaItem")
-    local MidiEvent     = Class:make("MidiEvent")
-    local MidiEventList = Class:makeVariant("MidiEventList", List)
-    local Project       = ClassWithPeer:make("Project")
-    local Region        = Class:make("Region")
-    local Take          = ClassWithPeer:make("Take")
-    local Track         = ClassWithPeer:make("Track")
+    local ConfigData           = Class:make("ConfigData")
+    local Effect               = Class:make("Effect")
+    local EffectParameter      = Class:make("EffectParameter")
+    local Generics             = {}
+    local MediaSource          = Class:make("MediaSource")
+    local MediaItem            = ClassWithPeer:make("MediaItem")
+    local MidiEvent            = Class:make("MidiEvent")
+    local MidiEventList        = Class:makeVariant("MidiEventList", List)
+    local Project              = ClassWithPeer:make("Project")
+    local Region               = Class:make("Region")
+    local Take                 = ClassWithPeer:make("Take")
+    local Track                = ClassWithPeer:make("Track")
+    local TrackConnection      = Class:make("TrackConnection")
+    local UI_MixerControlPanel = ClassWithPeer:make("UI.MixerControlPanel")
 
     -- ===============
     -- module Generics
@@ -297,6 +344,410 @@ require("String")
     -- end ConfigData
     -- =====================
 
+
+    -- ====================
+    -- class Effect
+    -- ====================
+        -- This class provides services for effects associated to
+        -- a track.
+
+        -- ------------------
+        -- PRIVATE FEATURES
+        -- ------------------
+
+        function Effect:_nameNOLOG ()
+            -- Returns name of current effect
+
+            local reaperTrack, reaperFXIndex =
+                self:internalRepresentation()
+            local _, result =
+                reaper.TrackFX_GetNamedConfigParm(reaperTrack,
+                                                  reaperFXIndex,
+                                                  "fx_name")
+            return result
+        end
+
+        -- ------------------
+
+        function Effect:_parameterCountNOLOG ()
+            -- Returns count of all parameters of current effect
+
+            local reaperTrack, reaperFXIndex =
+                self:internalRepresentation()
+            return reaper.TrackFX_GetNumParams(reaperTrack, reaperFXIndex)
+        end
+
+        -- ------------------
+
+        function Effect:_parameterListNOLOG ()
+            -- Returns list of all parameters of current effect
+
+            local parameterCreationProc =
+                function (effect, parameterIndex)
+                    return EffectParameter:make(effect, parameterIndex)
+                end
+            local result = Generics.makeList(self, EffectParameter,
+                                             parameterCreationProc,
+                                             self:_parameterCountNOLOG())
+            return result
+        end
+
+        -- ------------------
+        -- EXPORTED FEATURES
+        -- ------------------
+
+        function Effect.make (cls, track, index)
+            -- Returns effect with number <index> associated with
+            -- <track>
+
+            local fName = "Reaper.Effect.make"
+            Logging.traceF(fName, ">>: track = %s, index = %d",
+                           track, index)
+
+            local result = cls:makeInstance()
+            result._index = index
+            result._track = track
+
+            Logging.traceF(fName, "<<: %s", result)
+            return result
+        end
+
+        -- ··········
+        -- attributes
+        -- ··········
+
+        function Effect:activePreset ()
+            -- Returns name of preset for current effect if no
+            -- changes have been applied
+
+            local fName = "Reaper.Effect.activePreset"
+            Logging.traceF(fName, ">>: %s", self)
+
+            local reaperTrack, reaperFXIndex =
+                self:internalRepresentation()
+            local isOkay, result = reaper.TrackFX_GetPreset(reaperTrack,
+                                                            reaperFXIndex)
+            result = iif(not isOkay, "", result)
+
+            Logging.traceF(fName, "<<: %s", result)
+            return result
+        end
+
+        -- ------------------
+
+        function Effect:isEnabled ()
+            -- Tells whether current effect is enabled
+
+            local fName = "Reaper.Effect.isEnabled"
+            Logging.traceF(fName, ">>: %s", self)
+
+            local reaperTrack, reaperFXIndex =
+                self:internalRepresentation()
+            local result = reaper.TrackFX_GetEnabled(reaperTrack,
+                                                     reaperFXIndex)
+
+            Logging.traceF(fName, "<<: %s", result)
+            return result
+        end
+
+        -- ------------------
+
+        function Effect:kind ()
+            -- Returns kind of current effect
+
+            local fName = "Reaper.Effect.kind"
+            Logging.traceF(fName, ">>: %s", self)
+
+            local reaperTrack, reaperFXIndex =
+                self:internalRepresentation()
+            local _, result =
+                reaper.TrackFX_GetNamedConfigParm(reaperTrack,
+                                                  reaperFXIndex,
+                                                  "fx_ident")
+
+            Logging.traceF(fName, "<<: %s", result)
+            return result
+        end
+
+        -- ------------------
+
+        function Effect:name ()
+            -- Returns name of current effect
+
+            local fName = "Reaper.Effect.name"
+            Logging.traceF(fName, ">>: %s", self)
+            local result = self:_nameNOLOG()
+            Logging.traceF(fName, "<<: %s", result)
+            return result
+        end
+
+        -- ------------------
+
+        function Effect:parameterByName (name)
+            -- Returns parameter of current effect named <name> or nil
+            -- if not found
+
+            local fName = "Reaper.Effect.parameterByName"
+            Logging.traceF(fName, ">>: effect = %s, parameterName = %s",
+                           self, name)
+
+            local parameterList = self:_parameterListNOLOG()
+            local result
+
+            for _, effectParameter in parameterList:iterator() do
+                if effectParameter:_nameNOLOG() == name then
+                    result = effectParameter
+                    break
+                end
+            end
+            
+            Logging.traceF(fName, "<<: %s", result)
+            return result
+        end
+
+        -- ------------------
+
+        function Effect:parameterCount ()
+            -- Returns count of all parameters of current effect
+
+            local fName = "Reaper.Effect.parameterCount"
+            Logging.traceF(fName, ">>: %s", self)
+            local result = self:_parameterCountNOLOG()
+            Logging.traceF(fName, "<<: %d", result)
+            return result
+        end
+
+        -- ------------------
+
+        function Effect:parameterList ()
+            -- Returns list of all parameters of current effect
+
+            local fName = "Reaper.Effect.parameterList"
+            Logging.traceF(fName, ">>: %s", self)
+            local result = self:_parameterListNOLOG()
+            Logging.traceF(fName, "<<: %s", result)
+            return result
+        end
+
+        -- ------------------
+
+        function Effect:track ()
+            -- Returns track associated with current effect
+
+            local fName = "Reaper.Effect.track"
+            Logging.traceF(fName, ">>: %s", self)
+            local result = self._track
+            Logging.traceF(fName, "<<: %s", result)
+            return result
+        end
+
+        -- ················
+        -- attribute change
+        -- ················
+
+        function Effect:setEnabled (isEnabled)
+            -- Sets whether current effect is enabled by <isEnabled>
+
+            local fName = "Reaper.Effect.setEnabled"
+            Logging.traceF(fName, ">>: effect = %s, isEnabled = %s",
+                           self, isEnabled)
+
+            local reaperTrack, reaperFXIndex =
+                self:internalRepresentation()
+            reaper.TrackFX_SetEnabled(reaperTrack, reaperFXIndex,
+                                      isEnabled)
+
+            Logging.traceF(fName, "<<")
+            return result
+        end
+
+        -- ------------------
+
+        function Effect:setName (name)
+            -- Sets name of current effect to <name>
+
+            local fName = "Reaper.Effect.setName"
+            Logging.traceF(fName, ">>: effect = %s, name = %s",
+                           self, name)
+
+            local reaperTrack, reaperFXIndex =
+                self:internalRepresentation()
+            reaper.TrackFX_SetNamedConfigParm(reaperTrack,
+                                              reaperFXIndex,
+                                              "fx_name",
+                                              name)
+
+            Logging.traceF(fName, "<<")
+            return result
+        end
+
+        -- ··········
+        -- conversion
+        -- ··········
+
+        function Effect:__tostring ()
+            -- Returns a simple string representation of effect
+
+            local trackName = self._track:_nameNOLOG()
+            return String.format("Effect(track = '%s',"
+                                 .. " index = %d,"
+                                 .. " name = '%s')",
+                                 trackName, self._index,
+                                 self:_nameNOLOG())
+        end
+
+        -- ------------------
+
+        function Effect:internalRepresentation ()
+            -- Returns reaper representation of effect as a pair of
+            -- reaper track and index
+
+            return self._track:internalRepresentation(),
+                   self._index - 1
+        end
+
+    -- =====================
+    -- end Effect
+    -- =====================
+
+
+    -- ======================
+    -- class EffectParameter
+    -- ======================
+        -- This class provides services for effect parameters
+        -- associated to a track effect.
+
+        -- ------------------
+        -- PRIVATE FEATURES
+        -- ------------------
+
+        function EffectParameter:_nameNOLOG ()
+            -- Returns name of current effect parameter
+
+            local reaperTrack, reaperFXIndex, reaperParameterIndex =
+                self:internalRepresentation()
+            local _, result =
+                reaper.TrackFX_GetParamName(reaperTrack,
+                                            reaperFXIndex,
+                                            reaperParameterIndex)
+            return result
+        end
+
+        -- ------------------
+        -- EXPORTED FEATURES
+        -- ------------------
+
+        function EffectParameter.make (cls, effect, index)
+            -- Returns effect parameter with number <index> associated
+            -- with <effect>
+
+            local fName = "Reaper.EffectParameter.make"
+            Logging.traceF(fName, ">>: effect = %s, index = %d",
+                           effect, index)
+
+            local result = cls:makeInstance()
+            result._index  = index
+            result._effect = effect
+
+            Logging.traceF(fName, "<<: %s", result)
+            return result
+        end
+
+        -- ··········
+        -- attributes
+        -- ··········
+
+        function EffectParameter:name ()
+            -- Returns name of current effect parameter
+
+            local fName = "Reaper.EffectParameter.name"
+            Logging.traceF(fName, ">>: %s", self)
+            local result = self:_nameNOLOG()
+            Logging.traceF(fName, "<<: %s", result)
+            return result
+        end
+
+        -- ------------------
+
+        function EffectParameter:effect ()
+            -- Returns effect associated with current effect parameter
+
+            local fName = "Reaper.EffectParameter.effect"
+            Logging.traceF(fName, ">>: %s", self)
+            local result = self._effect
+            Logging.traceF(fName, "<<: %s", result)
+            return result
+        end
+
+        -- ------------------
+
+        function EffectParameter:value ()
+            -- Returns value of current effect parameter
+
+            local fName = "Reaper.EffectParameter.value"
+            Logging.traceF(fName, ">>: effectParameter = %s", self)
+
+            local reaperTrack, reaperFXIndex, reaperParameterIndex =
+                self:internalRepresentation()
+            local _, result = 
+                reaper.TrackFX_GetFormattedParamValue(reaperTrack,
+                                                      reaperFXIndex,
+                                                      reaperParameterIndex)
+
+            Logging.traceF(fName, "<<: %s", result)
+            return result
+        end
+
+        -- ················
+        -- attribute change
+        -- ················
+
+        function EffectParameter:setValue (value)
+            -- Sets value of current effect parameter to <value>
+
+            local fName = "Reaper.EffectParameter.setValue"
+            Logging.traceF(fName, ">>: effectParameter = %s, value = %s",
+                           self, value)
+
+            local reaperTrack, reaperFXIndex, reaperParameterIndex =
+                self:internalRepresentation()
+            -- reaper.TrackFX_SetEnabled(reaperTrack, reaperFXIndex - 1,
+            --                           parameterIndex - 1)
+
+            Logging.traceF(fName, "<<")
+            return result
+        end
+
+        -- ··········
+        -- conversion
+        -- ··········
+
+        function EffectParameter:__tostring ()
+            -- Returns a simple string representation of effect
+
+            return String.format("EffectParameter(effect = '%s',"
+                                 .. " parameterIndex = %d,"
+                                 .. " name = '%s')",
+                                 self._effect, self._index,
+                                 self:_nameNOLOG())
+        end
+
+        -- ------------------
+
+        function EffectParameter:internalRepresentation ()
+            -- Returns reaper representation of effect as a pair of
+            -- reaper track and index
+
+            local reaperTrack, reaperFXIndex =
+                self._effect:internalRepresentation()
+            return reaperTrack, reaperFXIndex, self._index - 1
+        end
+
+    -- =====================
+    -- end EffectParameter
+    -- =====================
+
+
     -- =======================
     -- class MediaItem
     -- =======================
@@ -312,7 +763,7 @@ require("String")
 
             local fName = "Reaper.MediaItem._make"
             Logging.traceF(fName, ">>")
-            result = cls:makeInstance(peerObject)
+            local result = cls:makeInstance(peerObject)
             Logging.traceF(fName, "<<: %s", result)
             return result
         end
@@ -662,6 +1113,7 @@ require("String")
     -- end MediaItem
     -- ====================
 
+
     -- =========================
     -- class MediaSource
     -- =========================
@@ -827,7 +1279,7 @@ require("String")
                 local relativeMidiTicks = midiTicks - initialMidiTicks
                 measureBarTickList:set(relativeMeasure, relativeMidiTicks)
                 Logging.traceF(fName,
-                               "--: %d -> %d",
+                               "--: %f -> %f",
                                relativeMeasure, relativeMidiTicks)
             end
 
@@ -857,7 +1309,7 @@ require("String")
                   _, pitch, velocity = reaper.MIDI_GetNote(reaperTake,
                                                            index - 1)
             local result = MidiNote:make(pitch, velocity,
-                                          startPosition, endPosition)
+                                         startPosition, endPosition)
             return result
         end
 
@@ -893,6 +1345,7 @@ require("String")
     -- end MediaSource
     -- ===============
 
+
     -- ===============
     -- class MidiEvent
     -- ===============
@@ -917,7 +1370,7 @@ require("String")
                   channelMsg2 = reaper.MIDI_GetCC(take._peerObject,
                                                   eventIndex - 1)
 
-            result = cls:makeInstance()
+            local result = cls:makeInstance()
             result.kind           = MidiEventKind.controlCode
             result.isSelected     = isSelected
             result.isMuted        = isMuted
@@ -948,7 +1401,7 @@ require("String")
                   channel, pitch, velocity =
                       reaper.MIDI_GetNote(take._peerObject, eventIndex - 1)
 
-            result = cls:makeInstance()
+            local result = cls:makeInstance()
             result.kind           = MidiEventKind.note
             result.isSelected     = isSelected
             result.isMuted        = isMuted
@@ -999,6 +1452,7 @@ require("String")
     -- =============
     -- end MidiEvent
     -- =============
+
 
     -- ===================
     -- class MidiEventList
@@ -1087,7 +1541,7 @@ require("String")
             local fName = "Reaper.Project._make"
             Logging.traceF(fName, ">>")
 
-            result = cls:makeInstance(peerObject)
+            local result = cls:makeInstance(peerObject)
 
             Logging.traceF(fName, "<<: %s", result)
             return result
@@ -1145,6 +1599,19 @@ require("String")
             -- Returns count of all selected media items in project
 
             return reaper.CountSelectedMediaItems(self._peerObject)
+        end
+
+        -- ------------------
+
+        function Project:trackByIndexNOLOG (index)
+            -- Returns track with <index> in project without logging
+
+            local result =
+                      Generics.findElementByIndexRaw(self, index,
+                                                     Track,
+                                                     reaper.GetTrack,
+                                                     self:trackCount())
+            return result
         end
 
         -- ------------------
@@ -1418,12 +1885,32 @@ require("String")
             local fName = "Reaper.Project.trackByIndex"
             Logging.traceF(fName,
                            ">>: self = %s, index = %s", self, index)
+            local result = Project:trackByIndexNOLOG(index)
+            Logging.traceF(fName, "<<: %s", result)
+            return result
+        end
 
-            local result =
-                      Generics.findElementByIndexRaw(self, index,
-                                                     Track,
-                                                     reaper.GetTrack,
-                                                     self:trackCount())
+        -- ------------------
+
+        function Project:trackByName (trackName)
+            -- Returns track named <trackName> in project
+
+            local fName = "Reaper.Project.trackByName"
+            Logging.traceF(fName,
+                           ">>: self = %s, name = %s", self, trackName)
+
+            local result
+            local count = self:trackCount()
+            
+            for i = 1, count do
+                local track = Project:trackByIndexNOLOG(i)
+
+                if track:name() == trackName then
+                    result = track
+                    break
+                end
+            end
+
             Logging.traceF(fName, "<<: %s", result)
             return result
         end
@@ -1458,6 +1945,7 @@ require("String")
     -- end Project
     -- ===========
 
+
     -- ============
     -- class Region
     -- ============
@@ -1482,7 +1970,7 @@ require("String")
                            ">>: project = %s, identification = %s",
                            project, identification)
 
-            result = cls:makeInstance()
+            local result = cls:makeInstance()
             result._project        = project
             result._identification = identification
 
@@ -1824,7 +2312,7 @@ require("String")
             local fName = "Reaper.Take._make"
             Logging.traceF(fName, ">>")
 
-            result = cls:makeInstance(peerObject)
+            local result = cls:makeInstance(peerObject)
 
             Logging.traceF(fName, "<<: %s", result)
             return result
@@ -1847,18 +2335,21 @@ require("String")
                            newValue)
 
             local isStringParameter = (parameterName == "P_NAME")
-            local proc = iif(isStringParameter,
-                             reaper.GetSetMediaItemTakeInfo_String,
-                             reaper.GetMediaItemTakeInfo_Value)
-            local result
             local reaperTake = self._peerObject
+            local proc
+            local result
 
-            if not isStringParameter then
-                result = proc(reaperTake, parameterName)
-            else
+            if isStringParameter then
                 local newValue = iif(isSetOperation, newValue, "")
+                proc = reaper.GetSetMediaItemTakeInfo_String
                 _, result = proc(reaperTake, parameterName,
                                  newValue, isSetOperation)
+            elseif isSetOperation then
+                proc = reaper.SetMediaItemTakeInfo_Value
+                result = proc(reaperTake, parameterName, newValue)
+            else
+                proc = reaper.GetMediaItemTakeInfo_Value
+                result = proc(reaperTake, parameterName)
             end
 
             Logging.traceF(fName, "<<: %s", result)
@@ -1976,6 +2467,19 @@ require("String")
 
         -- ------------------
 
+        function Take:setMediaStartOffset (startOffset)
+            -- Sets start time of associated media to <startOffset>
+
+            local fName = "Reaper.Take.setMediaStartOffset"
+            Logging.traceF(fName,
+                           ">>: self = %s, startOffset = %s",
+                           self, startOffset)
+            self:_getSetData("D_STARTOFFS", true, startOffset)
+            Logging.traceF(fName, "<<")
+        end
+
+        -- ------------------
+
         function Take:setMidiEvent (index, midiEvent)
             -- Writes <midiEvent> to event list at <index>
 
@@ -2049,7 +2553,6 @@ require("String")
                            self, name)
             self:_getSetData("P_NAME", true, name)
             Logging.traceF(fName, "<<")
-            return result
         end
 
         -- ··········
@@ -2099,10 +2602,18 @@ require("String")
             local fName = "Reaper.Track._make"
             Logging.traceF(fName, ">>")
 
-            result = cls:makeInstance(peerObject)
+            local result = cls:makeInstance(peerObject)
 
             Logging.traceF(fName, "<<: %s", result)
             return result
+        end
+
+        -- ------------------
+
+        function Track:effectCountNOLOG ()
+            -- Returns count of all effects in track
+
+            return reaper.TrackFX_GetCount(self._peerObject)
         end
 
         -- ------------------
@@ -2114,13 +2625,27 @@ require("String")
             -- parameter is changed, in that case <newValue> is the
             -- value to be written
 
-            newValue = iif(isSetOperation, newValue, "")
             local reaperTrack = self._peerObject
-            local _, result =
-                 reaper.GetSetMediaTrackInfo_String(reaperTrack,
-                                                    parameterName,
-                                                    newValue,
-                                                    isSetOperation)
+            local isStringParameter = String.hasPrefix(parameterName,
+                                                       "P_")
+            local _, result
+
+            if isStringParameter then
+                newValue = iif(isSetOperation, newValue, "")
+                _, result =
+                    reaper.GetSetMediaTrackInfo_String(reaperTrack,
+                                                       parameterName,
+                                                       newValue,
+                                                       isSetOperation)
+            elseif isSetOperation then
+                result = reaper.SetMediaTrackInfo_Value(reaperTrack,
+                                                        parameterName,
+                                                        newValue)
+            else
+                result = reaper.GetMediaTrackInfo_Value(reaperTrack,
+                                                        parameterName)
+            end
+
             return result
         end
 
@@ -2156,6 +2681,25 @@ require("String")
         -- EXPORTED ROUTINES
         -- --------------------
 
+        -- ············
+        -- construction
+        -- ············
+
+        function Track.make (cls, project, index)
+            -- Constructs a new track in <project> at <index>
+
+            local fName = "Reaper.Track.make"
+            Logging.traceF(fName, ">>: project = %s, index = %s",
+                           project, index)
+
+            index = index - 1
+            reaper.InsertTrackAtIndex(index, false)
+            local reaperTrack =  reaper.GetTrack(project, index)
+            local result = Track:_make(reaperTrack)
+            Logging.traceF(fName, "<<: %s", result)
+            return result
+        end
+
         -- ··········
         -- attributes
         -- ··········
@@ -2164,6 +2708,19 @@ require("String")
             -- Returns track identification
 
             return reaper.GetTrackGUID(self._peerObject)
+        end
+
+        -- ------------------
+
+        function Track:isSendingToParent ()
+            -- Returns information whether track audio is sent to
+            -- parent
+
+            local fName = "Reaper.Track.isSendingToParent"
+            Logging.traceF(fName, ">>: %s", self)
+            local result = (Track:_getSetData("B_MAINSEND") ~= 0)
+            Logging.traceF(fName, "<<: %s", result)
+            return result
         end
 
         -- ------------------
@@ -2220,6 +2777,30 @@ require("String")
             return result
         end
 
+        -- ------------------
+
+        function Track:pan ()
+            -- Returns pan of track
+
+            local fName = "Reaper.Track.pan"
+            Logging.traceF(fName, ">>: %s", self)
+            local result = Track:_getSetData("D_PAN")
+            Logging.traceF(fName, "<<: %s", result)
+            return result
+        end
+
+        -- ------------------
+
+        function Track:volume ()
+            -- Returns volume of track
+
+            local fName = "Reaper.Track.volume"
+            Logging.traceF(fName, ">>: %s", self)
+            local result = Track:_getSetData("D_VOL")
+            Logging.traceF(fName, "<<: %s", result)
+            return result
+        end
+
         -- ················
         -- attribute change
         -- ················
@@ -2243,7 +2824,22 @@ require("String")
             local fName = "Reaper.Track.setSelected"
             Logging.traceF(fName, ">>: track = %s, isSelected = %s",
                            self, isSelected)
-            reaper.SetTrackSelected(self._peerObject, isSelected)
+            local value = iif(isSelected, 1, 0)
+            self:_getSetData("I_SELECTED", true, value)
+            Logging.traceF(fName, "<<")
+        end
+
+        -- ------------------
+
+        function Track:setSendingToParent (isSending)
+            -- Set information whether track audio is sent to
+            -- parent to <isSending>
+
+            local fName = "Reaper.Track.setSendingToParent"
+            Logging.traceF(fName, ">>: track = %s, isSending = %s",
+                           self, isSending)
+            local value = iif(isSending, 1, 0)
+            self:_getSetData("B_MAINSEND", true, value)
             Logging.traceF(fName, "<<")
         end
 
@@ -2258,6 +2854,114 @@ require("String")
             Logging.traceF(fName, "<<")
         end
 
+        -- ------------------
+
+        function Track:setPan (panPosition)
+            -- Sets pan of track to <panPosition>
+
+            local fName = "Reaper.Track.setPan"
+            Logging.traceF(fName, ">>: track = %s, pan = %s",
+                           self, panPosition)
+            self:_getSetData("D_PAN", true, panPosition)
+            Logging.traceF(fName, "<<")
+        end
+
+        -- ------------------
+
+        function Track:setVolume (volume)
+            -- Sets volume of track to <volume>
+
+            local fName = "Reaper.Track.setVolume"
+            Logging.traceF(fName, ">>: track = %s, volume = %s",
+                           self, volume)
+            self:_getSetData("D_VOL", true, volume)
+            Logging.traceF(fName, "<<")
+        end
+
+        -- ···················
+        -- relations to others
+        -- ···················
+
+        function Track:connectionList (isOutgoingConnections)
+            -- Returns list of incoming (receive) or outgoing (send)
+            -- connections
+
+            local fName = "Reaper.Track.connectionList"
+            Logging.traceF(fName, ">>: %s", self)
+
+            local result =
+                TrackConnection:listAll(self, isOutgoingConnections)
+
+            Logging.traceF(fName, "<<: %s", result)
+            return result
+        end
+        
+        -- ------------------
+
+        function Track:effectCount ()
+            -- Returns count of effects in current track
+
+            local fName = "Reaper.Track.effectCount"
+            Logging.traceF(fName, ">>: %s", self)
+            local result = self:effectCountNOLOG()
+            Logging.traceF(fName, "<<: %s", result)
+            return result
+        end
+        
+        -- ------------------
+
+        function Track:effectList ()
+            -- Returns list of effects of current track
+
+            local fName = "Reaper.Track.effectList"
+            Logging.traceF(fName, ">>: %s", self)
+
+            local effectCreationProc =
+                function (track, effectIndex)
+                    return Effect:make(track, effectIndex)
+                end
+
+            local result = Generics.makeList(self, Effect,
+                                             effectCreationProc,
+                                             self:effectCountNOLOG())
+
+            Logging.traceF(fName, "<<: %s", result)
+            return result
+        end
+        
+        -- ------------------
+
+        function Track:makeConnection (otherTrack, isCreated)
+            -- Makes or reuses a track send-receive-connection to
+            -- <otherTrack> where this track acts as the sender; if
+            -- <isCreated> is set, such a connection is created anyhow,
+            -- otherwise the first existing is reused (if any);
+            -- returns resulting track connection object
+
+            local fName = "Reaper.Track.makeConnection"
+            Logging.traceF(fName,
+                           ">>: track = %s, otherTrack = %s,"
+                           .." isCreated = %s",
+                           self, otherTrack, isCreated)
+
+            local result = nil
+
+            if not isCreated then
+                result = TrackConnection:lookup(self, otherTrack)
+            end
+
+            if result == nil or isCreated then
+                result = TrackConnection:make(self, otherTrack)
+            end
+
+            if result == nil then
+                Logging.trace("--: could not make connection")
+            end
+
+            Logging.traceF(fName, "<<: %s", result)
+            return result
+        end
+        
         -- ··········
         -- conversion
         -- ··········
@@ -2265,6 +2969,8 @@ require("String")
         function Track:__tostring ()
             -- Returns a simple string representation of track
 
+            local identification = self:identification()
+            local name = self:_nameNOLOG()
             return String.format("Track(id = '%s', name = '%s')",
                                  self:identification(), self:_nameNOLOG())
         end
@@ -2285,6 +2991,468 @@ require("String")
     -- =========
     -- end Track
     -- =========
+
+    -- =====================
+    -- class TrackConnection
+    -- =====================
+        -- A track connection establishes a send-receive connection
+        -- between a source and a destination track
+
+        -- --------------------
+        -- PRIVATE FEATURES
+        -- --------------------
+
+        function TrackConnection._makeNOLOG (cls,
+                                             sourceTrack, destinationTrack)
+            -- Makes a send-receive connection object from
+            -- <sourceTrack> to <destinationTrack>
+
+            local result
+
+            result = cls:makeInstance()
+            result._sourceTrack      = sourceTrack
+            result._destinationTrack = destinationTrack
+
+            return result
+        end
+
+        -- ------------------
+
+        function TrackConnection:_getParameterNOLOG (parameterName)
+            -- Returns parameter given by <parameterName> for track
+            -- connection without logging
+
+            local result = nil
+
+            if parameterName == "P_DESTTRACK" then
+                result = self._destinationTrack
+            elseif parameterName == "P_SRCTRACK" then
+                result = self._sourceTrack
+            else
+                local reaperTrack = self._sourceTrack._peerObject
+                local sendIndex =
+                    TrackConnection:_sendIndex(self._sourceTrack,
+                                               self._destinationTrack)
+                if sendIndex >= 0 then
+                    result = reaper.GetTrackSendInfo_Value(reaperTrack,
+                                                           0, sendIndex,
+                                                           parameterName)
+                    
+                    if String.hasPrefix(parameterName, "B_") then
+                        result = (result ~= 0)
+                    end
+                end
+            end
+
+            return result
+        end
+
+        -- ------------------
+
+        function TrackConnection:_getParameter (parameterName)
+            -- Returns parameter given by <parameterName> for track
+            -- connection
+
+            local fName = "Reaper.TrackConnection._getParameter"
+            Logging.traceF(fName, ">>: %s, parameterName = %s",
+                           self, parameterName)
+            local result = self:_getParameterNOLOG(parameterName)
+            Logging.traceF(fName, "<<: %s", result)
+            return result
+        end
+
+        -- ------------------
+
+        function TrackConnection:_sendIndex (sourceTrack,
+                                             destinationTrack)
+            -- Returns send index for track connection from
+            -- <sourceTrack> to targetTrack> without logging
+
+            local result = -1
+            local reaperSourceTrack      = sourceTrack._peerObject
+            local reaperDestinationTrack = destinationTrack._peerObject
+            local sendCount =
+                      reaper.GetTrackNumSends(reaperSourceTrack, 0)
+
+            for sendIndex = 0, sendCount - 1 do
+                otherTrack = reaper.GetTrackSendInfo_Value(reaperSourceTrack,
+                                                           0, sendIndex,
+                                                           "P_DESTTRACK")
+
+                if otherTrack == reaperDestinationTrack then
+                    result = sendIndex
+                    break
+                end
+            end
+
+            return result
+        end
+        
+        -- ------------------
+
+        function TrackConnection:_setParameter (parameterName, value)
+            -- Sets parameter given by <parameterName> for track
+            -- connection to <value> and returns whether action was
+            -- successful
+
+            local fName = "Reaper.TrackConnection._setParameter"
+            Logging.traceF(fName, ">>: %s, parameterName = %s, value = %s",
+                           self, parameterName, value)
+
+            local result = nil
+            local reaperTrack = self._sourceTrack._peerObject
+            local sendIndex =
+                TrackConnection:_sendIndex(self._sourceTrack,
+                                           self._destinationTrack)
+
+            if sendIndex >= 0 then
+                if String.hasPrefix(parameterName, "B_") then
+                    result = iif(result, 1, 0)
+                end
+
+                result = reaper.SetTrackSendInfo_Value(reaperTrack,
+                                                       0, sendIndex,
+                                                       parameterName,
+                                                       value)
+            end
+
+            Logging.traceF(fName, "<<: %s", result)
+            return result
+        end
+
+        -- ------------------
+        -- EXPORTED ROUTINES
+        -- ------------------
+
+        function TrackConnection.make (cls,
+                                       sourceTrack, destinationTrack)
+            -- Makes a new send-receive connection from <sourceTrack> to
+            -- <destinationTrack>
+
+            local fName = "Reaper.TrackConnection.make"
+            Logging.traceF(fName, ">>: source = %s, destination = %s",
+                           sourceTrack, destinationTrack)
+            local reaperSourceTrack      = sourceTrack._peerObject
+            local reaperDestinationTrack = destinationTrack._peerObject
+            local _ = reaper.CreateTrackSend(reaperSourceTrack,
+                                             reaperDestinationTrack)
+            local result = TrackConnection:_makeNOLOG(sourceTrack,
+                                                      destinationTrack)
+
+            Logging.traceF(fName, "<<: %s", result)
+            return result
+        end
+
+        -- ------------------
+
+        function TrackConnection.listAll (cls,
+                                          track, isOutgoingConnections)
+            -- Returns list of incoming (receive) or outgoing (send)
+            -- connections for <track> depending on
+            -- <isOutgoingConnections>
+
+            local fName = "Reaper.TrackConnection.listAll"
+            Logging.traceF(fName,
+                           ">>: track = %s, isOutgoingConnections = %s",
+                           track, isOutgoingConnections)
+
+            local result = List:make()
+            
+            local reaperTrack = track._peerObject
+            local reaperSendCategory = iif(isOutgoingConnections, 0, -1)
+            local parameterName = iif(isOutgoingConnections,
+                                      "P_DESTTRACK", "P_SRCTRACK")
+            local sendCount = reaper.GetTrackNumSends(reaperTrack,
+                                                      reaperSendCategory)
+            local connection
+
+            for sendIndex = 0, sendCount - 1 do
+                local reaperOtherTrack =
+                          reaper.GetTrackSendInfo_Value(reaperTrack,
+                                                        reaperSendCategory,
+                                                        sendIndex,
+                                                        parameterName)
+                local otherTrack = Track:makeInstance(reaperOtherTrack)
+
+                if isOutgoingConnections then
+                    connection = cls:_makeNOLOG(track, otherTrack)
+                else
+                    connection = cls:_makeNOLOG(otherTrack, track)
+                end
+
+                result:append(connection)
+            end
+
+            Logging.traceF(fName, "<<: %s", result)
+            return result
+        end
+
+        -- ------------------
+
+        function TrackConnection.lookup (cls,
+                                         sourceTrack, destinationTrack)
+            -- Checks whether some send-receive connection from
+            -- <sourceTrack> to <destinationTrack> already exists and
+            -- returns it or nil (if not)
+
+            local fName = "Reaper.TrackConnection.lookup"
+            Logging.traceF(fName, ">>: source = %s, destination = %s",
+                           sourceTrack, destinationTrack)
+
+            local result = nil
+            local sendIndex =
+                      cls:_sendIndex(sourceTrack, destinationTrack)
+
+            if sendIndex >= 0 then
+                result = cls:_makeNOLOG(sourceTrack, destinationTrack)
+            end
+
+            Logging.traceF(fName, "<<: %s", result)
+            return result
+        end
+
+        -- ··········
+        -- attributes
+        -- ··········
+
+        function TrackConnection:destinationTrack ()
+            -- Returns the destination track of track connection
+
+            local fName = "Reaper.TrackConnection.destinationTrack"
+            Logging.traceF(fName, ">>: %s", self)
+            local result = self:_getParameter("P_DESTTRACK")
+            Logging.traceF(fName, "<<: %s", result)
+            return result
+        end
+
+        -- ------------------
+
+        function TrackConnection:isInverted ()
+            -- Returns whether track connection has inverted phase
+
+            local fName = "Reaper.TrackConnection.isInverted"
+            Logging.traceF(fName, ">>: %s", self)
+            local result = self:_getParameter("B_PHASE")
+            Logging.traceF(fName, "<<: %s", result)
+            return result
+        end
+
+        -- ------------------
+
+        function TrackConnection:isMono ()
+            -- Returns whether track connection is in mono
+
+            local fName = "Reaper.TrackConnection.isMono"
+            Logging.traceF(fName, ">>: %s", self)
+            local result = self:_getParameter("B_MONO")
+            Logging.traceF(fName, "<<: %s", result)
+            return result
+        end
+
+        -- ------------------
+
+        function TrackConnection:isMuted ()
+            -- Returns whether track connection is muted
+
+            local fName = "Reaper.TrackConnection.isMuted"
+            Logging.traceF(fName, ">>: %s", self)
+            local result = self:_getParameter("B_MUTE")
+            Logging.traceF(fName, "<<: %s", result)
+            return result
+        end
+
+        -- ------------------
+
+        function TrackConnection:midiFlags ()
+            -- Returns the MIDI flags of track connection
+
+            local fName = "Reaper.TrackConnection.midiFlags"
+            Logging.traceF(fName, ">>: %s", self)
+            local result = self:_getParameter("I_MIDIFLAGS")
+            Logging.traceF(fName, "<<: %s", result)
+            return result
+        end
+
+        -- ------------------
+
+        function TrackConnection:pan ()
+            -- Returns the pan position of track connection
+
+            local fName = "Reaper.TrackConnection.pan"
+            Logging.traceF(fName, ">>: %s", self)
+            local result = self:_getParameter("D_PAN")
+            Logging.traceF(fName, "<<: %s", result)
+            return result
+        end
+
+        -- ------------------
+
+        function TrackConnection:sendMode ()
+            -- Returns the send mode of track connection
+
+            local fName = "Reaper.TrackConnection.sendMode"
+            Logging.traceF(fName, ">>: %s", self)
+            local result = self:_getParameter("I_SENDMODE")
+            Logging.traceF(fName, "<<: %s", result)
+            return result
+        end
+
+        -- ------------------
+
+        function TrackConnection:sourceTrack ()
+            -- Returns the source track of track connection
+
+            local fName = "Reaper.TrackConnection.sourceTrack"
+            Logging.traceF(fName, ">>: %s", self)
+            local result = self:_getParameter("P_SRCTRACK")
+            Logging.traceF(fName, "<<: %s", result)
+            return result
+        end
+            
+        -- ------------------
+
+        function TrackConnection:volume ()
+            -- Returns the volume of track connection
+
+            local fName = "Reaper.TrackConnection.volume"
+            Logging.traceF(fName, ">>: %s", self)
+            local result = self:_getParameter("D_VOL")
+            Logging.traceF(fName, "<<: %s", result)
+            return result
+        end
+            
+        -- ················
+        -- attribute change
+        -- ················
+
+        function TrackConnection:setInverted (isInverted)
+            -- Sets whether track connection has inverted phase to
+            -- <isInverted>
+
+            local fName = "Reaper.TrackConnection.setInverted"
+            Logging.traceF(fName, ">>: %s, isInverted = %s",
+                           self, isInverted)
+            local value = iif(isInverted, 1, 0)
+            local result = self:_setParameter("B_PHASE", value)
+            Logging.traceF(fName, "<<")
+            return result
+        end
+
+        -- ------------------
+
+        function TrackConnection:setMidiFlags (value)
+            -- Sets the MIDI flags of track connection to <value>
+
+            local fName = "Reaper.TrackConnection.setMidiFlags"
+            Logging.traceF(fName, ">>: %s, value = %s", self, value)
+            local result = self:_setParameter("I_MIDIFLAGS", value)
+            Logging.traceF(fName, "<<")
+            return result
+        end
+
+        -- ------------------
+
+        function TrackConnection:setMono (isMono)
+            -- Sets whether track connection is in mono to <isMono>
+
+            local fName = "Reaper.TrackConnection.setMono"
+            Logging.traceF(fName, ">>: %s, value = %s", self, isMono)
+            local value = iif(isMono, 1, 0)
+            local result = self:_setParameter("B_MONO", value)
+            Logging.traceF(fName, "<<")
+            return result
+        end
+
+        -- ------------------
+
+        function TrackConnection:setMuted (isMuted)
+            -- Sets whether track connection is muted to <isMuted>
+
+            local fName = "Reaper.TrackConnection.setMuted"
+            Logging.traceF(fName, ">>: %s, value = %s", self, isMuted)
+            local value = iif(isMuted, 1, 0)
+            local result = self:_setParameter("B_MUTE", value)
+            Logging.traceF(fName, "<<")
+            return result
+        end
+
+        -- ------------------
+
+        function TrackConnection:setPan (panPosition)
+            -- Sets the pan position of track connection to
+            -- <panPosition>
+
+            local fName = "Reaper.TrackConnection.setPan"
+            Logging.traceF(fName, ">>: %s, value = %s",
+                           self, panPosition)
+            local result = self:_setParameter("D_PAN", panPosition)
+            Logging.traceF(fName, "<<")
+            return result
+        end
+
+        -- ------------------
+
+        function TrackConnection:setSendMode (sendMode)
+            -- Sets the send mode of track connection to <sendMode>
+
+            local fName = "Reaper.TrackConnection.setSendMode"
+            Logging.traceF(fName, ">>: %s, value = %s", self, sendMode)
+            local result = self:_setParameter("I_SENDMODE", sendMode)
+            Logging.traceF(fName, "<<")
+            return result
+        end
+
+        -- ------------------
+
+        function TrackConnection:setVolume (volume)
+            -- Sets the volume of track connection to <volume>
+
+            local fName = "Reaper.TrackConnection.setVolume"
+            Logging.traceF(fName, ">>: %s, value = %s", self, volume)
+            local result = self:_setParameter("D_VOL", volume)
+            Logging.traceF(fName, "<<")
+            return result
+        end
+            
+        -- ··········
+        -- conversion
+        -- ··········
+
+        function TrackConnection:__tostring ()
+            -- Returns a simple string representation of a track
+            -- connection
+
+            local sendMode = self:_getParameterNOLOG("I_SENDMODE")
+            local sendModeAsString =
+                      TrackSendModeKind.__tostring(sendMode)
+
+            local template = ("TrackConnection("
+                              .. "sourceTrack = %s,"
+                              .. " destinationTrack = %s,"
+                              .. " isMuted = %s,"
+                              .. " isInverted = %s,"
+                              .. " isMono = %s,"
+                              .. " volume = %s,"
+                              .. " pan = %s,"
+                              .. " sendMode = %s,"
+                              .. " midiFlags = %x"
+                              .. ")")
+
+            return String.format(template,
+                                 self._sourceTrack,
+                                 self._destinationTrack,
+                                 self:_getParameterNOLOG("B_MUTE"),
+                                 self:_getParameterNOLOG("B_PHASE"),
+                                 self:_getParameterNOLOG("B_MONO"),
+                                 self:_getParameterNOLOG("D_VOL"),
+                                 self:_getParameterNOLOG("D_PAN"),
+                                 sendModeAsString,
+                                 self:_getParameterNOLOG("I_MIDIFLAGS"))
+        end
+
+    -- ===================
+    -- end TrackConnection
+    -- ===================
 
     -- ========
     -- class UI
@@ -2316,6 +3484,110 @@ require("String")
     -- end UI
     -- ======
 
+    -- ==========================
+    -- class UI_MixerControlPanel
+    -- ==========================
+
+        -- Represents a MixerControlPanel associated with a track; it
+        -- can be found by the track index and then layout name and color
+        -- can be set
+
+        -- --------------------
+        -- PRIVATE FEATURES
+        -- --------------------
+
+        function UI_MixerControlPanel._make (cls, peerObject)
+            -- Constructs a wrapper mixer control panel from
+            -- <peerObject>
+
+            local fName = "Reaper.UI.MixerControlPanel._make"
+            Logging.traceF(fName, ">>: %s", peerObject)
+
+            local result = cls:makeInstance(peerObject)
+
+            Logging.traceF(fName, "<<: %s", result)
+            return result
+        end
+
+        -- ------------------
+        -- EXPORTED ROUTINES
+        -- --------------------
+
+        function UI_MixerControlPanel.findByTrack (track)
+            -- Returns mixer control panel for given <track>
+
+            local fName = "Reaper.UI.MixerControlPanel.findByTrack"
+            Logging.traceF(fName, ">>: track = %s", track)
+
+            local result
+            
+            if track == nil then
+                result = nil
+            else
+                -- make the underlying Reaper track the peer object of
+                -- mixer control panel
+                result = UI_MixerControlPanel:_make(track._peerObject)
+            end
+
+            Logging.traceF(fName, "<<: %s", result)
+            return result
+        end
+
+        -- ------------------
+
+        function UI_MixerControlPanel:setLayout (layoutName)
+            -- Sets the layout of the mixer control panel to
+            -- <layoutName>; does not check whether this name is
+            -- valid
+
+            local fName = "Reaper.UI.MixerControlPanel.setLayout"
+            Logging.traceF(fName, ">>: layoutName = %s", layoutName)
+
+            local reaperTrack = self._peerObject
+            reaper.GetSetMediaTrackInfo_String(reaperTrack,
+                                               "P_MCP_LAYOUT",
+                                               layoutName,
+                                               true)
+            
+            Logging.traceF(fName, "<<")
+        end
+
+        -- ------------------
+
+        function UI_MixerControlPanel:setColor (color)
+            -- Sets the color of the mixer control panel to
+            -- <color>; does not check whether this color is valid
+
+            local fName = "Reaper.UI.MixerControlPanel.setColor"
+            Logging.traceF(fName, ">>: color = %d", color)
+
+            local reaperTrack = self._peerObject
+            reaper.SetTrackColor(reaperTrack, color)
+
+            Logging.traceF(fName, "<<")
+        end
+
+        -- ··········
+        -- conversion
+        -- ··········
+
+        function UI_MixerControlPanel:__tostring ()
+            -- Returns a simple string representation of media source
+
+            local reaperTrack = self._peerObject
+            local parameterName = "P_NAME"
+            local _, trackName =
+                 reaper.GetSetMediaTrackInfo_String(reaperTrack,
+                                                    parameterName,
+                                                    "",
+                                                    false)
+            return String.format("UI_MixerControlPanel('%s')", trackName)
+        end
+
+    -- ========================
+    -- end UI_MixerControlPanel
+    -- ========================
+
     -- ========================
     -- MODULE EXPORT DEFINITION
     -- ========================
@@ -2334,11 +3606,15 @@ require("String")
         Take = { make = Take.make },
         TimeBaseKind = TimeBaseKind,
         Track = { make = Track.make },
+        TrackSendModeKind = TrackSendModeKind,
         UI = {
             MessageBoxKind = MessageBoxKind,
             MessageBoxAnswerKind = MessageBoxAnswerKind,
             showMessageBox = UI_showMessageBox,
-            updateTimeline = UI_updateTimeline
+            updateTimeline = UI_updateTimeline,
+            MixerControlPanel = {
+                findByTrack = UI_MixerControlPanel.findByTrack
+            }
         }
     }
 

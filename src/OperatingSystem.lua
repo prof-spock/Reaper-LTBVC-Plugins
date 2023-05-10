@@ -63,6 +63,52 @@ OperatingSystem = {}
     -- exported features
     -- --------------------
 
+    function OperatingSystem.baseName (fileName, extensionIsShown)
+        -- Returns <fileName> without leading path; if
+        -- <extensionIsShown> is set, also the extension is
+        -- returned
+
+        local fName = "OperatingSystem.baseName"
+        extensionIsShown = iif(extensionIsShown == nil,
+                               true, extensionIsShown)
+        cls = OperatingSystem
+        Logging.traceF(fName, ">>: fileName = %s, extensionIsShown = %s",
+                       fileName, extensionIsShown)
+
+        local nameList = String.split(fileName, cls.pathSeparator)
+        local shortFileName = nameList:at(nameList:count())
+        local result = shortFileName
+
+        if not extensionIsShown then
+            local partList = String.split(result, ".")
+            partList:removeLast()
+            result = String.join(partList, ".")
+        end
+        
+        Logging.traceF(fName, "<<: %s", result)
+        return result
+    end
+
+    -- --------------------
+
+    function OperatingSystem.dirName (filePath)
+        -- Returns directory of <filePath>
+
+        local cls = OperatingSystem
+        Logging.trace(">>: %s", filePath)
+
+        local separator = cls.pathSeparator
+        filePath = filePath:gsub("[\\/]", separator)
+        local nameList = String.split(filePath, separator)
+        nameList:removeLast()
+        local result = String.join(nameList, separator)
+
+        Logging.trace("<<: %s", result)
+        return result
+    end
+
+    -- --------------------
+
     function OperatingSystem.getEnvironmentVariable (name)
         -- Reads environment variable <name> and returns its value;
         -- returns nil on failure
@@ -81,7 +127,7 @@ OperatingSystem = {}
         -- in file system; if <isWritable> is set, then it is also
         -- required that the directory is writable
 
-        local fName = "OperatingSystem.directoryExists"
+        local fName = "OperatingSystem.hasDirectory"
         Logging.traceF(fName,
                        ">>: directory = %s, isWritable = %s",
                        directoryName, isWritable)
@@ -103,7 +149,7 @@ OperatingSystem = {}
         -- Tells whether file specified by <fileName> exists in
         -- file system
 
-        local fName = "OperatingSystem.fileExists"
+        local fName = "OperatingSystem.hasFile"
         Logging.traceF(fName, ">>: %s", fileName)
 
         local result, errorText = OperatingSystem._fileExistsNOLOG(fileName)
@@ -113,6 +159,22 @@ OperatingSystem = {}
         end
         
         Logging.traceF(fName, "<<: %s", result)
+        return result
+    end
+
+    -- --------------------
+
+    function OperatingSystem.homeDirectoryPath ()
+        -- Returns home directory path
+
+        local cls = OperatingSystem
+        Logging.trace(">>")
+
+        result = cls.getEnvironmentVariable("HOMEPATH")
+        result = result or cls.getEnvironmentVariable("HOME")
+        result = result or ""
+
+        Logging.trace("<<: %s", result)
         return result
     end
 
@@ -136,6 +198,11 @@ OperatingSystem = {}
         return result
     end
 
+    -- --------------------
+
+    OperatingSystem.pathSeparator = "/"
+    -- the path separator between the parts in a file path
+    
     -- --------------------
 
     function OperatingSystem.selectDirectory (defaultDirectoryName, ...)

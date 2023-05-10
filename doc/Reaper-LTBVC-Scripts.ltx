@@ -10,6 +10,7 @@
     \usepackage{etoolbox}                  % ==> patchcmd
     \usepackage{fancyhdr}                  % ==> fancyhead
     \usepackage{graphicx}                  % ==> includegraphics
+    \usepackage{listings}                  % ==> listings
     \usepackage[section]{placeins}         % ==> FloatBarrier
     \usepackage{titlesec}                  % ==> titleformat
 
@@ -78,11 +79,21 @@
 
     \bibliographystyle{plain}
 
+    \newlength{\listingMargin}
+    \setlength{\listingMargin}{4mm}
+    \newlength{\listingWidth}
+    \setlength{\listingWidth}{\linewidth}
+    \addtolength{\listingWidth}{-2\listingMargin}
+
+    \newlength{\listingInnerFrame}
+    \setlength{\listingInnerFrame}{1mm}
+
     %-------------------
     %-- MISC COMMANDS --
     %-------------------
 
     \newcommand{\arrowTo}{\(\rightarrow\)}
+    \newcommand{\blank}{\textvisiblespace}
     \newcommand{\bsl}{\textbackslash}
 
     \newcommand{\centeredExternalPicture}[2]{%
@@ -106,9 +117,12 @@
         \includegraphics[scale=#1]{figures/#2}%
     }
 
+    \newcommand{\FluidSynthPlugins}{Fluid\-Synth-Plugins}
+    \newcommand{\fspGitPluginPath}{\profSpockPrefix/FluidSynthPlugin}
+
     \newcommand{\hyperlink}[1]{\textsf{\color{blue}#1}}
     \newcommand{\meta}[1]{\guillemotleft #1\guillemotright}
-
+    \newcommand{\profSpockPrefix}{https://github.com/prof-spock}
     \newcommand{\SoX}{SoX}
     \newcommand{\TODO}[1]{\emph{\color{red}\textbf{TODO:} #1}}
 
@@ -136,6 +150,36 @@
 
     \newcommand{\prefsScalingFactor}{0.35}
     \newcommand{\tcpScalingFactor}{0.45}
+
+  %-------------------------
+  %-- LISTING DEFINITIONS --
+  %-------------------------
+
+  \definecolor{configFileBkgnd}   {RGB}{230,250,230}
+  \lstdefinestyle{standard}
+                 {gobble=4, showspaces=false, showstringspaces=false,
+                  xleftmargin=\listingMargin,
+                  xrightmargin=\listingMargin,
+                  framexleftmargin=\listingInnerFrame,
+                  framextopmargin=\listingInnerFrame,
+                  framexrightmargin=\listingInnerFrame,
+                  framexbottommargin=\listingInnerFrame,
+                  basicstyle=\scriptsize\ttfamily}
+
+  \lstdefinelanguage{ltbvc}{
+      morekeywords = {INCLUDE},
+      sensitive=true,
+      morecomment=[l]{--},
+      morestring=[b]"
+  }
+
+  \def\ttlisting{\par\minipage{\linewidth}\lstset}
+  \def\endttlisting{\endminipage\par}
+
+  \lstnewenvironment{configurationFileCode}
+                    {\ttlisting{language=ltbvc,style=standard,
+                                backgroundcolor=\color{configFileBkgnd}}}
+                    {\endttlisting}
     
 %############################################################
 \begin{document}
@@ -189,6 +233,14 @@ this process easier.
 The following scripts are provided:
 \begin{ttDescription}
 
+    \item[AdaptTracksToLTBVCConventions.lua:] applies specific theme
+         and layouts to the tracks and routes audio according to LTBVC
+         conventions,
+  
+    \item[AdjustSoXEffectNames.lua:] sets the effect names of the SoX
+         effects to the command line strings required for processing
+         outside of the Reaper DAW,
+  
     \item[ExportLilypond.lua:] transforms the notes of the selected
          MIDI item into a textual lilypond note/chord sequence and
          returns them in a text box,
@@ -198,16 +250,16 @@ The following scripts are provided:
          replaces those by the corresponding track in an associated
          MIDI file filtering out unwanted MIDI items before import,
 
-    \item[MakeRegionsFromRegionStructureTrack.lua:] either makes regions
-         based on a track with structural MIDI items or generates that
-         region structure track with MIDI items from the current
-         regions, and
+    \item[MakeRegionsFromRegionStructureTrack.lua:] either makes
+         regions based on a track with structural MIDI items or
+         generates that region structure track with MIDI items from
+         the current regions, and
 
     \item[NormalizeStructuredVoiceTracks.lua:] scans all tracks with
          some specific prefix and normalizes their enclosed MIDI items
          by removing reverb, chorus and delay control codes, setting
          note velocities to some default and quantizing the note start
-         and end positions
+         and end positions.
 
 \end{ttDescription}
 
@@ -279,17 +331,27 @@ When you have your project organized in such a way is then possible to
     \item reflect the musical structure as regions based on the items
           in some track (see section~\ref{section:makeRegions}),
 
+    \item sets the tracks' layouts in the mixer according to LTBVC
+          conventions and routes the audio accordingly (see
+          section~\ref{section:adaptTrackLayouts}),
+
     \item normalize the structured voice tracks by removing unwanted
           control codes and quantizing the note positions to a raster
           compatible with the later lilypond export (see
           section~\ref{section:normalizeTracks}),
 
     \item export MIDI items in the structured voice tracks as lilypond
-          fragments (see section~\ref{section:exportLilypond}), and
+          fragments (see section~\ref{section:exportLilypond}),
 
     \item repeatedly import the MIDI file generated by \ltbvc\ into
-          special project tracks e.g. for a detailed comparison with the
-          structured voice tracks (see section~\ref{section:importMidi}).
+          special project tracks e.g. for a detailed comparison with
+          the structured voice tracks (see
+          section~\ref{section:importMidi}), and
+
+    \item adjust the effect names of the SoX effects in the DAW to the
+          command line fragments needed when doing an external
+          rendering (see section~\ref{section:adjustSoXEffectNames})
+          and also make all of them available in a dialog windows.
 
 \end{itemize}
           
@@ -303,6 +365,222 @@ When you have your project organized in such a way is then possible to
 Figure~\ref{figure:structuredVoiceTracks} shows the
 structuring of the demo song from the \ltbvc.  Note that this Reaper
 DAW file is also included in the current distribution.
+
+
+%--------------------------------------
+\section{AdaptTracksToLTBVCConventions}
+\label{section:adaptTrackLayouts}
+%--------------------------------------
+
+When a project in a DAW is aimed at emulating the \ltbvc\ tool chain,
+it is helpful to organize the tracks in a certain manner.
+
+There are seven groups of tracks:
+\begin{itemize}
+
+    \item (optional) tracks with original audio as reference material,
+    
+    \item structured MIDI voice tracks that contain MIDI data for the
+          voices and have loops or aliases indicating the musical
+          structure of voice/song (with MIDI converted to audio by some
+          VST instrument),
+
+    \item MIDI voice tracks generated by the ``midi'' phase of the 
+          external tool chain (where all structure is expanded, but
+          the MIDI data should be almost identical to the structured
+          MIDI tracks see~\ref{section:importMidi}), which also have
+          their MIDI converted to audio by some VST instrument,
+
+    \item raw audio voice tracks generated by the ``rawaudio'' phase
+          of the external tool chain (where MIDI is rendered as audio
+          but no SoX effects have been applied),
+
+    \item plain effect voice tracks containing all the SoX effects
+          applied to each voice similar to the ``refinedaudio'' phase
+          of the external tool chain,
+
+    \item refined audio voice tracks generated by the
+          ``refinedaudio'' phase of the external tool chain (as
+          reference tracks), and
+
+    \item final audio voice tracks where refined audio is panned and
+          has its volume adjusted for the final mix
+
+\end{itemize}
+
+Each group has its own ``folder track'' such that they can be
+individually muted.
+
+This project structure seems to be overly complex, but the idea behind
+that is to factor out commonalities between the tracks.
+
+\begin{centeredFigure}
+    \centeredExternalPicture{0.6}
+                            {adaptStructure-tracks.png}
+    \caption{Audio Routing Along Voice Tracks}
+    \label{figure:adaptStructure-tracks}
+\end{centeredFigure}
+
+For each voice the following is done (as shown in
+figure~\ref{figure:adaptStructure-tracks}):
+\begin{itemize}
+
+    \item The structured MIDI track, the generated MIDI track and the
+          raw audio track are routed into the plain SoX effect track
+          for that voice.  Routing is pre-FX for the raw audio track
+          and post-FX for both the MIDI tracks.
+
+          This means that the identical SoX effect chain is applied to
+          all those audio source.  Because the MIDI tracks have a
+          FluidSynthPlugin as their MIDI-to-audio converter, in
+          principle all those tracks should provide the same audio
+          signal (apart from the missing humanization in the
+          structured track).
+
+    \item The output of the voice SoX effect track and the refined
+          audio track are both routed into the voice mix track to have
+          pan and volume applied for the final mix.  Routing is pre-FX
+          for the refined audio track and post-FX for the effect track.
+
+          As an additional trick the refined audio track is phase
+          inverted.  This means that when both effect track and
+          refined audio track deliver some audio signal, \textbf{those
+          should completely cancel out}.  This helps when checking
+          whether the internal and external effects chain is
+          identical.
+
+    \item Finally all voice mix tracks are mixed into the (stereo)
+          master track post-fader.
+
+\end{itemize}
+
+It is also clear, that not all tracks need all kinds of interaction,
+for example in the mixer panel.  An effect track or a raw audio track
+does not have to have a volume fader or a pan control because those
+are handled in the voice mix track.  A raw or refined audio track does
+not need any effects: its media is just routed into another track
+following.
+
+Hence it is helpful to change the appearance of the tracks
+accordingly.  Reaper allows to customize the track layout as required,
+so there is a layout style to be preferably applied to an
+\ltbvc\ project.
+
+The whole proceedure looks tedious: routing tracks and setting their
+layout to reflect their function manually.
+
+Fortunately the script \embeddedCode{AdaptTracksToLTBVCConventions}
+does all that.  It connects tracks as given in
+figure~\ref{figure:adaptStructure-tracks} via some naming conventions
+and also applies track layouts to them.
+
+Both naming convention and layout assignment is handled by the script
+based on a so-called ``configuration file''.  This is a text file that
+defines several variables and is either located in the script
+directory or in the directory \embeddedCode{.luasettings} in the
+user's home directory.  (For a detailed description of configuration
+files see the
+\ltbvc\ documentation~\cite{reference:lilypondToBandVideoConverter}.)
+
+The variables relevant for this script are
+\embeddedCode{trackKindToNamePatternMap},
+\embeddedCode{trackNamePatternWithParentDisabledList}, and
+\embeddedCode{track\-Name\-Pattern\-To\-Connection\-Data\-Map}.
+
+\embeddedCode{trackNamePatternToConnectionDataMap} tells the routing
+partners for specific name patterns signifying track categories
+(e.g. effects or raw audio tracks).  The variable maps each of those
+category track name pattern (in convention of the programming language
+Lua) as the connection source onto a capturing pattern giving the
+destination track name together with the position of the send and the
+information whether some phase inversion is done.
+
+For example, the map entry
+\begin{configurationFileCode}
+    "'^E%s+(%S.*)' : [ '^F%s+%1', 'postFX', true  ],"
+\end{configurationFileCode}
+tells that an effect track (starting with an ``E'' character and some
+white space followed by the voice name) is connected to a correspondig
+track starting with an ``F'' letter and some white space followed by
+the same track name.  Routing is post-FX and a phase inversion is also
+applied.
+
+Hence the default variable definition matching figure might look like
+\begin{configurationFileCode}
+    trackNamePatternToConnectionDataMap = "{"
+        "'^E%s+(%S.*)' : [ '^F%s+%1', 'postFX', false ],"
+        "'^M%s+(%S.*)' : [ '^E%s+%1', 'postFX', false ],"
+        "'^RA%s+(%S.*)': [ '^E%s+%1', 'preFX',  false ],"
+        "'^RF%s+(%S.*)': [ '^F%s+%1', 'preFX',  true  ],"
+        "'^S%s+(%S.*)' : [ '^E%s+%1', 'postFX', false ]"
+    "}"
+\end{configurationFileCode}
+
+That default naming convention for the track routing assumes track
+names as given by the table in
+figure~\ref{figure:adaptStructure-naming}.
+
+\begin{centeredFigure}
+    \bgroup\small
+        \begin{tabular}{|c|c|}
+            \hline
+            \bf TRACK KIND&\bf TRACK NAME PREFIX\\\hline\hline
+            original track&O\blank\\\hline
+            structured MIDI track&S\blank\\\hline
+            generated MIDI track&M\blank\\\hline
+            raw audio track&RA\blank\\\hline
+            effect track&E\blank\\\hline
+            refined audio track&RF\blank\\\hline
+            mix track&M\blank\\\hline
+        \end{tabular}
+    \egroup
+    \caption{Default Naming Conventions for Tracks}
+    \label{figure:adaptStructure-naming}
+\end{centeredFigure}
+
+The variable \embeddedCode{trackNamePatternWithParentDisabledList}
+gives a list of patterns for tracks names that are not directly
+connected to the master track.
+
+So for example the setting
+\begin{configurationFileCode}
+    trackNamePatternWithParentDisabledList = "["
+        "'^E%s+%S.*$', '^RA%s+%S.*$'," ...
+    "]"
+\end{configurationFileCode}
+makes sure that effect tracks as well as raw audio track (with the
+convention from above!) are not connected to the master track.
+
+\embeddedCode{trackNamePatternToColorAndLayoutMap} is a map with each
+entry being a regular expression string mapped onto a pair of colour
+and name of some layout in Reaper.
+
+For example, the entry
+\begin{configurationFileCode}
+    "'^E%s+': [ 0xFF8080, 'gf - Effect Bus' ]"
+\end{configurationFileCode}
+tells that a track with name starting with ``E'' followed by at least
+one blank shall be set to colour light blue (=0xFF8080 in
+BGR-notation) and to a layout named ``gf - Effect Bus''.
+
+So the variable could be set to
+\begin{configurationFileCode}
+    trackNamePatternToColorAndLayoutMap = "{"
+        "'^EFFECTS': [ 0xFF0000, 'gc - Grouping without FX'],"
+        "'^E%s+':    [ 0xFF8080, 'gf - Effect Bus' ]"
+    "}"
+\end{configurationFileCode}
+
+When the script is run on the demo project, the routing is adapted (as
+shown in figure~\ref{figure:adaptStructure-tracks}) and the mixer will
+look like shown in figure~\ref{figure:adaptStructure-mixer}.
+
+\begin{centeredFigure}
+    \centeredExternalPicture{0.45}
+                            {adaptStructure-mixer.png}
+    \caption{Standardized \ltbvc\ Track Layout in Mixer}
+    \label{figure:adaptStructure-mixer}
+\end{centeredFigure}
 
 
 %-----------------------------
@@ -442,17 +720,23 @@ from \ltbvc.
 
 The processing by the script is as follows:
 \begin{itemize}
+
     \item The referenced MIDI file is imported into new temporary tracks.
+
     \item All existing tracks with matching names (``\meta{instrument
           name} - \meta{MIDI file name}'' are updated from the imported
           tracks.
+
     \item The new temporary tracks are deleted.
+
     \item Some filtering is done on the imported MIDI items: pan,
           reverb and volume control codes are removed (because they
           shall be provided by DAW controls and effects).
+
     \item All those items are set to ``locked'' (because they should
           not be changed manually, because they will be overwritten by
           the next import).
+
 \end{itemize}
 
 The example song has four MIDI tracks for each of the voices;
@@ -577,6 +861,49 @@ follows:
 
 \end{itemize}
 
+
+%-----------------------------------
+\section{AdjustSoXEffectNames}
+\label{section:adjustSoXEffectNames}
+%-----------------------------------
+
+In the ``refinedaudio'' phase of the external tool chain \SoX\ is used
+for applying audio effects to the raw audio.  In the DAW the
+\SoX\ plugins from \cite{reference:soxPlugins} emulate the external
+\SoX\ program bit-identically.
+
+When tweaking the \SoX\ plugins, the command lines for the
+\SoX\ program can be easily extracted from the DAW.  This is done by
+the script \embeddedCode{AdjustSoXEffectNames}.
+
+The script does two things:
+\begin{itemize}
+
+    \item The correct command line text for the corresponding
+          \SoX\ effect is used as the name of the \SoX\ plugin in the
+          DAW.
+
+    \item For all tracks containing \SoX\ plugins, track name and the
+          command line for the effects are written into Reaper's
+          message window.
+
+\end{itemize}
+
+Figure~\ref{figure:adjustSoXEffectNames} shows an example of the
+command line generation for a \SoX\ phaser effect.
+
+\begin{centeredFigureHere}
+    \begin{tabular}{>{\centering}m{85mm}%
+                    >{\centering}m{55mm}}
+        \externalPicture{0.65}{adjustSoXEffectNames-phaser.png}
+        & \(\longrightarrow\)
+          \embeddedCode{phaser 0.6 0.66 3 0.6 0.5 -t}\\
+    \end{tabular}
+    \caption{Extraction of Command Line Fragment for SoX Effect Plugin}
+    \label{figure:adjustSoXEffectNames}
+\end{centeredFigureHere}
+
+
 %==================
 \chapter{Demo Song}
 %==================
@@ -586,6 +913,7 @@ the demo song of the \ltbvc.
 
 The following tracks are contained in the project:
 \begin{itemize}
+
     \item a region structure track,
 
     \item structured voice tracks for all four voices (vocals, bass,
@@ -600,6 +928,7 @@ The following tracks are contained in the project:
     \item effect tracks enhancing MIDI or raw audio tracks, and
 
     \item refined audio tracks (generated by the \ltbvc\ pipeline)
+
 \end{itemize}
 
 Because this project file should work with a standard Reaper
@@ -610,26 +939,19 @@ stock effects.  This is acceptable for trying out the plugins
 described in this document, but does not faithfully reproduce the sound
 of the external pipeline.
 
+For a realistic impression of the external MIDI to audio conversion,
+one also needs a soundfont player fully compatible with the fluidsynth
+player~\cite{reference:fluidsynth} used in the \ltbvc\ pipeline.  One
+candidate is the FluidSynthPlugin that almost faithfully emulates the
+external fluidsynth player (apart from some deviations described in
+its documentation \cite{reference:fluidsynthPluginsRepository}).
+
 If you want to emulate the \SoX\ effects from the external pipeline
 (as mentioned in the \ltbvc\ documentations) you'll have to install
 specific \SoX\ emulation plugins (for example, the \SoX\ plugins from
 \cite{reference:soxPlugins}) and then adapt the effect tracks
 accordingly.
 
-For a realistic impression of the external MIDI to audio conversion,
-one would need a soundfont player fully compatible with the fluidsynth
-player~\cite{reference:fluidsynth} used in the
-\ltbvc\ pipeline. Otherwise one has to accept the slight sound
-deviation caused by using another player like, for example,
-sforzando~\cite{reference:sforzando}.
-
-But while the \SoX\ plugins can produce a bit-identical reproduction
-of the audio of the external effects pipeline, the bit-identical
-rendition of the MIDI to audio conversion is almost impossible in a
-DAW: even if a player were algorithmically identical to fluidsynth,
-the sound would typically not be identical because of inherent
-differences in the sample buffer windows or phases of internal
-modulators between internal and external sound rendering pipelines.
 
 %===========================
 \chapter{Coping with Errors}
@@ -666,7 +988,7 @@ a function (``\(<<\)'') and a log line within a function
 
 %=========================================
 \addcontentsline{toc}{chapter}{References}
-\begin{thebibliography}{LTBVCPlugins}
+\begin{thebibliography}{FluidSynthPlugin}
 %=========================================
 
     \bibitem[Fluidsynth]{reference:fluidsynth}
@@ -674,16 +996,21 @@ a function (``\(<<\)'') and a log line within a function
                 SoundFont~2 specifications}.\\
         \hyperlink{https://fluidsynth.org}
 
+    \bibitem[FluidSynthPlugin]{reference:fluidsynthPluginsRepository}
+        Thomas Tensi.\\
+        \textit{\FluidSynthPlugins}\\
+        \hyperlink{\fspGitPluginPath}
+
     \bibitem[LTBVC]{reference:lilypondToBandVideoConverter}
         Dr. Thomas Tensi.\\
         \textit{LilypondToBandVideoConverter - Generator for Notation
                 Backing Track Videos from Lilypond Files.}\\
-        \hyperlink{https://github.com/prof-spock/LilypondToBandVideoConverter}
+        \hyperlink{\profSpockPrefix/LilypondToBandVideoConverter}
 
     \bibitem[LTBVCPlugins]{reference:ltbvcPlugins}
         Dr. Thomas Tensi.\\
         \textit{Reaper Plugins for the LilypondToBandVideoConverter.}\\
-        \hyperlink{https://github.com/prof-spock/Reaper-LTBVC-Plugins}
+        \hyperlink{\profSpockPrefix/Reaper-LTBVC-Plugins}
 
     \bibitem[ReaPack]{reference:reapack}
         Christian Fillion.\\
@@ -695,15 +1022,11 @@ a function (``\(<<\)'') and a log line within a function
         \textit{Reaper Digital Audio Workstation.}\\
         \hyperlink{https://reaper.fm}
 
-    \bibitem[Sforzando]{reference:sforzando}
-        \textit{Sforzando - a free, highly SFZ2.0 compliant player}.\\
-        \hyperlink{https://www.plogue.com/products/sforzando.html}
-
     \bibitem[SoXPlugins]{reference:soxPlugins}
         Dr. Thomas Tensi.\\
         \textit{SoX Plugins - A Reimplementation of the \SoX\
                 Commandline Processor as DAW Plugins.}\\
-        \hyperlink{https://github.com/prof-spock/LilypondToBandVideoConverter}
+        \hyperlink{\profSpockPrefix/SoX-Plugins}
 
 \end{thebibliography}
 \end{document}

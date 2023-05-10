@@ -8,21 +8,28 @@ DAW][reference:reaper]; they assist in using the
 [LilypondToBandVideoConverter][reference:ltbvc]
 tool chain for generating notation videos from arrangement text files.
 
-The four scripts provide the following services:
+The six scripts provide the following services:
 
+  - *AdaptTracksToLTBVCConventions.lua:* applies specific theme and
+    layouts to the tracks and routes audio according to LTBVC
+    conventions,
+  
+  - *AdjustSoXEffectNames.lua:* sets the effect names of the SoX
+    effects to the command line strings required for processing
+    outside of the Reaper DAW,
+  
   - *ExportLilypond.lua:* transforms the notes of the selected MIDI
-     item into a textual lilypond note/chord sequence and returns them
-     in a text box,
+    item into a textual lilypond note/chord sequence and returns them
+    in a text box,
 
   - *ImportMidi.lua:* scans the current project for tracks with single
-     MIDI items and replaces those by the corresponding track in an
-     associated MIDI file filtering out unwanted midi items before
-     import,
+    MIDI items and replaces those by the corresponding track in an
+    associated MIDI file filtering out unwanted midi items before
+    import,
 
   - *MakeRegionsFromStructureTrack.lua:* either makes regions based on
-     a region structure track with structural MIDI items or generates
-     that structure track with midi items from the current regions,
-     and
+    a region structure track with structural MIDI items or generates
+    that structure track with midi items from the current regions, and
 
   - *NormalizeStructuredMidiTracks.lua:* scans all tracks with some
     specific prefix and normalizes their enclosed midi items by

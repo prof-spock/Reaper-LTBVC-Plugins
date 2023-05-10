@@ -396,7 +396,8 @@ function main ()
     local message
     local project = Reaper.Project.current()
     local midiFileName = findMidiFileFromTracks(project)
-    local fileExists = OperatingSystem.hasFile(midiFileName)
+    local fileExists = (midiFileName ~= nil
+                        and OperatingSystem.hasFile(midiFileName))
 
     if midiFileName == nil then
         message = "Could not find any file name in MIDI tracks"
