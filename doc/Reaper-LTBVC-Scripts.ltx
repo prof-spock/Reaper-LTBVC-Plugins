@@ -2,6 +2,7 @@
 \documentclass[titlepage,twoside,12pt,a4paper]{report}
     \usepackage[T1]{fontenc}
 
+    \usepackage{amssymb}                   % ==> blacktriangledown
     \usepackage[font={small,it}]{caption}  % ==> captionof
     \usepackage[usenames]{color}           % ==> color
     \usepackage{colortbl}                  % ==> cellcolor
@@ -18,8 +19,8 @@
     %-- CONFIGURATION --
     %-------------------
 
-    \newcommand{\currentVersion}{1.0}
-    \newcommand{\currentVersionDate}{2021-12-17}
+    \newcommand{\currentVersion}{1.1}
+    \newcommand{\currentVersionDate}{2023-05-10}
 
     %------------
     %-- TITLES --
@@ -124,6 +125,9 @@
     \newcommand{\meta}[1]{\guillemotleft #1\guillemotright}
     \newcommand{\profSpockPrefix}{https://github.com/prof-spock}
     \newcommand{\SoX}{SoX}
+
+    \definecolor{soXCommandBkgnd}   {RGB}{250,250,200}
+
     \newcommand{\TODO}[1]{\emph{\color{red}\textbf{TODO:} #1}}
 
     \newenvironment{ttDescription}%
@@ -608,12 +612,12 @@ song to be ``f'' (major).  Only major keys can be defined, but,
 however, this only affects whether accidentals used shall be sharps or
 flats.
 
-\begin{centeredFigure}
+\begin{centeredFigureHere}
     \centeredExternalPicture{\prefsScalingFactor}
                             {exportLilypond-settings.png}
     \caption{Key Definition for ExportLilypond}
     \label{figure:exportLilypond-settings}
-\end{centeredFigure}
+\end{centeredFigureHere}
 
 All instruments have a default octave defined by their names, where
 the note sequences start as follows:
@@ -893,11 +897,11 @@ Figure~\ref{figure:adjustSoXEffectNames} shows an example of the
 command line generation for a \SoX\ phaser effect.
 
 \begin{centeredFigureHere}
-    \begin{tabular}{>{\centering}m{85mm}%
-                    >{\centering}m{55mm}}
-        \externalPicture{0.65}{adjustSoXEffectNames-phaser.png}
-        & \(\longrightarrow\)
-          \embeddedCode{phaser 0.6 0.66 3 0.6 0.5 -t}\\
+    \begin{tabular}{c}
+        \externalPicture{0.8}{adjustSoXEffectNames-phaser.png}\\[2mm]
+        \Huge\(\blacktriangledown\)\\[2mm]
+        \colorbox{soXCommandBkgnd}
+                 {\embeddedCode{phaser 0.6 0.66 3 0.6 0.5 -t}}\\
     \end{tabular}
     \caption{Extraction of Command Line Fragment for SoX Effect Plugin}
     \label{figure:adjustSoXEffectNames}
