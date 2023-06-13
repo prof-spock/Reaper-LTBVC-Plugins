@@ -349,21 +349,53 @@ require("String")
     -- class Effect
     -- ====================
         -- This class provides services for effects associated to
-        -- a track.
+        -- a track or an enclosing container.
 
         -- ------------------
         -- PRIVATE FEATURES
         -- ------------------
 
-        function Effect:_nameNOLOG ()
-            -- Returns name of current effect
+        function Effect:_configurationParameterNOLOG (parameterName)
+            -- Returns value of configuration parameter named
+            -- <parameterName> for current effect
 
             local reaperTrack, reaperFXIndex =
                 self:internalRepresentation()
-            local _, result =
+
+            local isOkay, result =
                 reaper.TrackFX_GetNamedConfigParm(reaperTrack,
                                                   reaperFXIndex,
-                                                  "fx_name")
+                                                  parameterName)
+            return result
+        end
+
+        -- ------------------
+
+        function Effect:_isContainerNOLOG ()
+            -- Tells whether current effect is a container
+
+            local reaperTrack, reaperFXIndex =
+                self:internalRepresentation()
+            local result = false
+            -- local _, result =
+            --     reaper.TrackFX_GetNamedConfigParm(reaperTrack,
+            --                                       reaperFXIndex,
+            --                                       "fx_name")
+            return result
+        end
+
+        -- ------------------
+
+        function Effect:_nameNOLOG ()
+            -- Returns name of current effect
+
+            local result =
+                self:_configurationParameterNOLOG("renamed_name")
+
+            if result == "" then
+                result = self:_configurationParameterNOLOG("fx_name")
+            end
+            
             return result
         end
 
@@ -435,6 +467,49 @@ require("String")
 
         -- ------------------
 
+        function Effect:effectList ()
+            -- Returns the list of contained effects when current
+            -- effect is a container
+
+            local fName = "Reaper.Effect.effectList"
+            Logging.traceF(fName, ">>: %s", self)
+
+            local isContainer = self:_isContainerNOLOG()
+            local result = List:make()
+
+            -- if isContainer then
+            -- end
+            
+            Logging.traceF(fName, "<<: %s", result)
+            return result
+        end
+
+        -- ------------------
+
+        function Effect:identification ()
+            -- Returns unique identification of current effect
+
+            local fName = "Reaper.Effect.identification"
+            Logging.traceF(fName, ">>: %s", self)
+            local result = self:_configurationParameterNOLOG("fx_ident")
+            Logging.traceF(fName, "<<: %s", result)
+            return result
+        end
+
+        -- ------------------
+
+        function Effect:isContainer ()
+            -- Tells whether current effect is a container
+
+            local fName = "Reaper.Effect.isContainer"
+            Logging.traceF(fName, ">>: %s", self)
+            local result = self:_isContainerNOLOG()
+            Logging.traceF(fName, "<<: %s", result)
+            return result
+        end
+
+        -- ------------------
+
         function Effect:isEnabled ()
             -- Tells whether current effect is enabled
 
@@ -457,14 +532,7 @@ require("String")
 
             local fName = "Reaper.Effect.kind"
             Logging.traceF(fName, ">>: %s", self)
-
-            local reaperTrack, reaperFXIndex =
-                self:internalRepresentation()
-            local _, result =
-                reaper.TrackFX_GetNamedConfigParm(reaperTrack,
-                                                  reaperFXIndex,
-                                                  "fx_ident")
-
+            local result = self:_configurationParameterNOLOG("fx_type")
             Logging.traceF(fName, "<<: %s", result)
             return result
         end
@@ -490,6 +558,8 @@ require("String")
             local fName = "Reaper.Effect.parameterByName"
             Logging.traceF(fName, ">>: effect = %s, parameterName = %s",
                            self, name)
+            assert(not self:_isContainerNOLOG(),
+                   "parameters not available for container effect")
 
             local parameterList = self:_parameterListNOLOG()
             local result
@@ -512,6 +582,8 @@ require("String")
 
             local fName = "Reaper.Effect.parameterCount"
             Logging.traceF(fName, ">>: %s", self)
+            assert(not self:_isContainerNOLOG(),
+                   "parameters not available for container effect")
             local result = self:_parameterCountNOLOG()
             Logging.traceF(fName, "<<: %d", result)
             return result
@@ -524,6 +596,8 @@ require("String")
 
             local fName = "Reaper.Effect.parameterList"
             Logging.traceF(fName, ">>: %s", self)
+            assert(not self:_isContainerNOLOG(),
+                   "parameters not available for container effect")
             local result = self:_parameterListNOLOG()
             Logging.traceF(fName, "<<: %s", result)
             return result
@@ -531,10 +605,12 @@ require("String")
 
         -- ------------------
 
-        function Effect:track ()
-            -- Returns track associated with current effect
+        function Effect:parent ()
+            -- Returns parent object associated with current effect:
+            -- either track in case of a top level effect or enclosing
+            -- container object
 
-            local fName = "Reaper.Effect.track"
+            local fName = "Reaper.Effect.parent"
             Logging.traceF(fName, ">>: %s", self)
             local result = self._track
             Logging.traceF(fName, "<<: %s", result)
@@ -574,7 +650,7 @@ require("String")
                 self:internalRepresentation()
             reaper.TrackFX_SetNamedConfigParm(reaperTrack,
                                               reaperFXIndex,
-                                              "fx_name",
+                                              "renamed_name",
                                               name)
 
             Logging.traceF(fName, "<<")
@@ -1276,7 +1352,8 @@ require("String")
                 local time = MediaSource:convertMeasureToTime(measure)
                 local midiTicks = timeToTickProc(take, time)
                 local relativeMeasure = measure - firstMeasure + 1
-                local relativeMidiTicks = midiTicks - initialMidiTicks
+                local relativeMidiTicks =
+                    math.floor(midiTicks - initialMidiTicks)
                 measureBarTickList:set(relativeMeasure, relativeMidiTicks)
                 Logging.traceF(fName,
                                "--: %f -> %f",
