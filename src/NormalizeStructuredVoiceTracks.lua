@@ -144,11 +144,11 @@ function _removeUnwantedControlCodes (take)
     Logging.trace("--: ccEventCount[%s] = %d",
                   take, midiControlEventList:count())
 
-    for i, controlEvent in midiControlEventList:reversedIterator() do
+    for eventIndex, controlEvent in midiControlEventList:reversedIterator() do
         local controlCode = controlEvent.messagePart1
         local isRelevant = _controlCodeSet:contains(controlCode)
         Logging.trace("--: index = %d, cc = %d, isRelevant = %s",
-                      i, controlCode, isRelevant)
+                      eventIndex, controlCode, isRelevant)
 
         if isRelevant then
             midiControlEventList:deleteEvent(eventIndex)
