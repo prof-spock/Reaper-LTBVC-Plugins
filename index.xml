@@ -26,9 +26,13 @@ The six scripts provide the following services:\par
 \pard{\pntext\f1\'B7\tab}{\*\pn\pnlvlblt\pnf1\pnindent0{\pntxtb\'B7}}\nowidctlpar\fi-360\li720\sa200\sl276\slmult1\b AdaptTracksToLTBVCConventions.lua:\b0
  applies specific theme and layouts to the tracks and
  routes audio according to LTBVC conventions,\par
-{\pntext\f1\'B7\tab}\b AdjustSoXEffectNames.lua:\b0
- sets the effect names of the SoX effects to the command line
- strings required for processing outside of the Reaper DAW,\par
+{\pntext\f1\'B7\tab}\b AdjustSoXEffectNamesInAllTracks.lua:\b0
+ sets the effect names of the SoX effects in all tracks to the command
+ line strings required for processing outside of the Reaper DAW,\par
+{\pntext\f1\'B7\tab}\b AdjustSoXEffectNamesInSelectedTracks.lua:\b0
+ sets the effect names of the SoX effects in selected tracks to the
+ command line strings required for processing outside of the Reaper
+ DAW,\par
 {\pntext\f1\'B7\tab}\b ExportLilypond.lua:\b0
  transforms the notes of the selected MIDI item into a textual
  lilypond note/chord sequence and returns them in a text box,\par
@@ -56,18 +60,20 @@ The six scripts provide the following services:\par
       <version name="1.0" author="Dr. Thomas Tensi" time="2021-12-17T00:00:00Z">
         <changelog><![CDATA[Initial Release]]></changelog>
         <source file="doc/Reaper-LTBVC-Scripts.pdf">https://github.com/prof-spock/Reaper-LTBVC-Plugins/raw/d1cc95d2601df32814676da2fed0318e1d4a2b8a/Reaper-LTBVC-Scripts.pdf</source>
+        <source file="AdjustSoXEffectNames.lua">https://github.com/prof-spock/Reaper-LTBVC-Plugins/raw/d1cc95d2601df32814676da2fed0318e1d4a2b8a/src/AdjustSoXEffectNames.lua</source>
         <source file="Base.lua">https://github.com/prof-spock/Reaper-LTBVC-Plugins/raw/d1cc95d2601df32814676da2fed0318e1d4a2b8a/src/Base.lua</source>
         <source file="Class.lua">https://github.com/prof-spock/Reaper-LTBVC-Plugins/raw/d1cc95d2601df32814676da2fed0318e1d4a2b8a/src/Class.lua</source>
         <source file="Lilypond.lua">https://github.com/prof-spock/Reaper-LTBVC-Plugins/raw/d1cc95d2601df32814676da2fed0318e1d4a2b8a/src/Lilypond.lua</source>
         <source file="List.lua">https://github.com/prof-spock/Reaper-LTBVC-Plugins/raw/d1cc95d2601df32814676da2fed0318e1d4a2b8a/src/List.lua</source>
         <source file="Logging.lua">https://github.com/prof-spock/Reaper-LTBVC-Plugins/raw/d1cc95d2601df32814676da2fed0318e1d4a2b8a/src/Logging.lua</source>
         <source file="LTBVCPlugins_AdaptTracksToLTBVCConventions.lua" main="main">https://github.com/prof-spock/Reaper-LTBVC-Plugins/raw/d1cc95d2601df32814676da2fed0318e1d4a2b8a/src/AdaptTracksToLTBVCConventions.lua</source>
-        <source file="LTBVCPlugins_AdjustSoXEffectNames.lua" main="main">https://github.com/prof-spock/Reaper-LTBVC-Plugins/raw/d1cc95d2601df32814676da2fed0318e1d4a2b8a/src/AdjustSoXEffectNames.lua</source>
+        <source file="LTBVCPlugins_AdjustSoXEffectNamesInAllTracks.lua" main="main">https://github.com/prof-spock/Reaper-LTBVC-Plugins/raw/d1cc95d2601df32814676da2fed0318e1d4a2b8a/src/AdjustSoXEffectNamesInAllTracks.lua</source>
+        <source file="LTBVCPlugins_AdjustSoXEffectNamesInSelectedTracks.lua" main="main">https://github.com/prof-spock/Reaper-LTBVC-Plugins/raw/d1cc95d2601df32814676da2fed0318e1d4a2b8a/src/AdjustSoXEffectNamesInSelectedTracks.lua</source>
         <source file="LTBVCPlugins_ExportLilypond.lua" main="main">https://github.com/prof-spock/Reaper-LTBVC-Plugins/raw/d1cc95d2601df32814676da2fed0318e1d4a2b8a/src/ExportLilypond.lua</source>
         <source file="LTBVCPlugins_ImportMidi.lua" main="main">https://github.com/prof-spock/Reaper-LTBVC-Plugins/raw/d1cc95d2601df32814676da2fed0318e1d4a2b8a/src/ImportMidi.lua</source>
         <source file="LTBVCPlugins_MakeRegionsFromRegionStructureTrack.lua" main="main">https://github.com/prof-spock/Reaper-LTBVC-Plugins/raw/d1cc95d2601df32814676da2fed0318e1d4a2b8a/src/MakeRegionsFromRegionStructureTrack.lua</source>
-        <source file="Map.lua">https://github.com/prof-spock/Reaper-LTBVC-Plugins/raw/d1cc95d2601df32814676da2fed0318e1d4a2b8a/src/Map.lua</source>
         <source file="LTBVCPlugins_NormalizeStructuredVoiceTracks.lua" main="main">https://github.com/prof-spock/Reaper-LTBVC-Plugins/raw/d1cc95d2601df32814676da2fed0318e1d4a2b8a/src/NormalizeStructuredVoiceTracks.lua</source>
+        <source file="Map.lua">https://github.com/prof-spock/Reaper-LTBVC-Plugins/raw/d1cc95d2601df32814676da2fed0318e1d4a2b8a/src/Map.lua</source>
         <source file="OperatingSystem.lua">https://github.com/prof-spock/Reaper-LTBVC-Plugins/raw/d1cc95d2601df32814676da2fed0318e1d4a2b8a/src/OperatingSystem.lua</source>
         <source file="Reaper.lua">https://github.com/prof-spock/Reaper-LTBVC-Plugins/raw/d1cc95d2601df32814676da2fed0318e1d4a2b8a/src/Reaper.lua</source>
         <source file="Set.lua">https://github.com/prof-spock/Reaper-LTBVC-Plugins/raw/d1cc95d2601df32814676da2fed0318e1d4a2b8a/src/Set.lua</source>

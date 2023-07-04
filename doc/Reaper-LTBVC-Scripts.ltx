@@ -20,7 +20,7 @@
     %-------------------
 
     \newcommand{\currentVersion}{1.1}
-    \newcommand{\currentVersionDate}{2023-05-10}
+    \newcommand{\currentVersionDate}{2023-07-04}
 
     %------------
     %-- TITLES --
@@ -241,9 +241,10 @@ The following scripts are provided:
          and layouts to the tracks and routes audio according to LTBVC
          conventions,
   
-    \item[AdjustSoXEffectNames.lua:] sets the effect names of the SoX
-         effects to the command line strings required for processing
-         outside of the Reaper DAW,
+    \item[AdjustSoXEffectNames*.lua:] sets the effect names
+         of the SoX effects in either all or the selected tracks to
+         the command line strings required for processing outside of
+         the Reaper DAW,
   
     \item[ExportLilypond.lua:] transforms the notes of the selected
          MIDI item into a textual lilypond note/chord sequence and
@@ -587,6 +588,51 @@ look like shown in figure~\ref{figure:adaptStructure-mixer}.
 \end{centeredFigure}
 
 
+%-----------------------------------
+\section{AdjustSoXEffectNames}
+\label{section:adjustSoXEffectNames}
+%-----------------------------------
+
+In the ``refinedaudio'' phase of the external tool chain \SoX\ is used
+for applying audio effects to the raw audio.  In the DAW the
+\SoX\ plugins from \cite{reference:soxPlugins} emulate the external
+\SoX\ program bit-identically.
+
+When tweaking the \SoX\ plugins, the command lines for the
+\SoX\ program can be easily extracted from the DAW.  This is done by
+the scripts \embeddedCode{AdjustSoXEffectNamesInAllTracks} and
+\embeddedCode{AdjustSoXEffectNamesInSelectedTracks}, where the former
+one processes all tracks while the latter processes only the selected
+tracks.
+
+The scripts do two things:
+\begin{itemize}
+
+    \item The correct command line text for the corresponding
+          \SoX\ effect is used as the name of the \SoX\ plugin in the
+          DAW.
+
+    \item For those tracks containing \SoX\ plugins, track name and
+          the command line for the effects are written into Reaper's
+          message window.
+
+\end{itemize}
+
+Figure~\ref{figure:adjustSoXEffectNames} shows an example of the
+command line generation for a \SoX\ phaser effect.
+
+\begin{centeredFigureHere}
+    \begin{tabular}{c}
+        \externalPicture{0.8}{adjustSoXEffectNames-phaser.png}\\[2mm]
+        \Huge\(\blacktriangledown\)\\[2mm]
+        \colorbox{soXCommandBkgnd}
+                 {\embeddedCode{phaser 0.6 0.66 3 0.6 0.5 -t}}\\
+    \end{tabular}
+    \caption{Extraction of Command Line Fragment for SoX Effect Plugin}
+    \label{figure:adjustSoXEffectNames}
+\end{centeredFigureHere}
+
+
 %-----------------------------
 \section{ExportLilypond}
 \label{section:exportLilypond}
@@ -864,48 +910,6 @@ follows:
           (because they shall be provided by DAW controls and effects).
 
 \end{itemize}
-
-
-%-----------------------------------
-\section{AdjustSoXEffectNames}
-\label{section:adjustSoXEffectNames}
-%-----------------------------------
-
-In the ``refinedaudio'' phase of the external tool chain \SoX\ is used
-for applying audio effects to the raw audio.  In the DAW the
-\SoX\ plugins from \cite{reference:soxPlugins} emulate the external
-\SoX\ program bit-identically.
-
-When tweaking the \SoX\ plugins, the command lines for the
-\SoX\ program can be easily extracted from the DAW.  This is done by
-the script \embeddedCode{AdjustSoXEffectNames}.
-
-The script does two things:
-\begin{itemize}
-
-    \item The correct command line text for the corresponding
-          \SoX\ effect is used as the name of the \SoX\ plugin in the
-          DAW.
-
-    \item For all tracks containing \SoX\ plugins, track name and the
-          command line for the effects are written into Reaper's
-          message window.
-
-\end{itemize}
-
-Figure~\ref{figure:adjustSoXEffectNames} shows an example of the
-command line generation for a \SoX\ phaser effect.
-
-\begin{centeredFigureHere}
-    \begin{tabular}{c}
-        \externalPicture{0.8}{adjustSoXEffectNames-phaser.png}\\[2mm]
-        \Huge\(\blacktriangledown\)\\[2mm]
-        \colorbox{soXCommandBkgnd}
-                 {\embeddedCode{phaser 0.6 0.66 3 0.6 0.5 -t}}\\
-    \end{tabular}
-    \caption{Extraction of Command Line Fragment for SoX Effect Plugin}
-    \label{figure:adjustSoXEffectNames}
-\end{centeredFigureHere}
 
 
 %==================

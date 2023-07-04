@@ -173,16 +173,17 @@ require("String")
 
         -- ------------------
 
-        function Generics.findElementByIndexRawNOLOG (container, index,
+        function Generics.findElementByIndexRawNOLOG (container,
+                                                      index,
                                                       elementType,
                                                       rawSelectionProc,
                                                       elementCount)
             -- Generic routine to extract a single element in
             -- <container> by <index> and finally wrap it into type
-            -- <elementType>; <rawSelectionProc> selects the element
-            -- from the container peer object via (index - 1),
-            -- <elementCount> gives the number of those elements in
-            -- container
+            -- <elementType> (without logging); <rawSelectionProc>
+            -- selects the element from the container peer object via
+            -- (index - 1), <elementCount> gives the number of those
+            -- elements in container
 
             local reaperContainer = container._peerObject
             local lowercasedTypeName =
@@ -225,6 +226,25 @@ require("String")
 
         -- --------------------
 
+        function Generics.makeListNOLOG (container, elementType,
+                                         selectionProc, elementCount)
+            -- Generic routine to make a list from all elements within
+            -- <container>; <selectionProc> selects the elements from
+            -- the container via an index and <elementCount> returns
+            -- the number of those elements in container
+
+            local result = List:make()
+
+            for elementIndex = 1, elementCount do
+                local element = selectionProc(container, elementIndex)
+                result:append(element)
+            end
+
+            return result
+        end
+
+        -- --------------------
+
         function Generics.makeList (container, elementType,
                                     selectionProc, elementCount)
             -- Generic routine to make a list from all elements within
@@ -237,14 +257,9 @@ require("String")
                            ">>: container = %s, kind = %s, count = %s",
                            container, elementType.__name, elementCount)
 
-            local result = List:make()
-
-            for elementIndex = 1, elementCount do
-                Logging.traceF(fName,
-                               "--: processing element %d", elementIndex)
-                local element = selectionProc(container, elementIndex)
-                result:append(element)
-            end
+            local result =
+                Generics.makeListNOLOG(container, elementType,
+                                       selectionProc, elementCount)
 
             Logging.traceF(fName, "<<: %s", result)
             return result
@@ -532,7 +547,7 @@ require("String")
 
             local fName = "Reaper.Effect.kind"
             Logging.traceF(fName, ">>: %s", self)
-            local result = self:_configurationParameterNOLOG("fx_type")
+            local result = self:_configurationParameterNOLOG("fx_name")
             Logging.traceF(fName, "<<: %s", result)
             return result
         end
@@ -545,7 +560,7 @@ require("String")
             local fName = "Reaper.Effect.name"
             Logging.traceF(fName, ">>: %s", self)
             local result = self:_nameNOLOG()
-            Logging.traceF(fName, "<<: %s", result)
+            Logging.traceF(fName, "<<: '%s'", result)
             return result
         end
 
@@ -643,7 +658,7 @@ require("String")
             -- Sets name of current effect to <name>
 
             local fName = "Reaper.Effect.setName"
-            Logging.traceF(fName, ">>: effect = %s, name = %s",
+            Logging.traceF(fName, ">>: effect = %s, name = '%s'",
                            self, name)
 
             local reaperTrack, reaperFXIndex =
@@ -1956,6 +1971,19 @@ require("String")
 
         -- ------------------
 
+        function Project:selectedTrackList ()
+            -- Returns list of selected tracks in project
+
+            local fName = "Reaper.Project.selectedTrackList"
+            Logging.traceF(fName, ">>: %s", self)
+            local result = self:trackList()
+            result = result:select(Track.isSelected)
+            Logging.traceF(fName, "<<: %s", result)
+            return result
+        end
+
+        -- ------------------
+
         function Project:trackByIndex (index)
             -- Returns track with <index> in project
 
@@ -2011,10 +2039,10 @@ require("String")
 
             local fName = "Reaper.Project.trackList"
             Logging.traceF(fName, ">>: %s", self)
-            local result = Generics.makeList(self, Track,
-                                             self.trackByIndex,
-                                             self:trackCount())
-            Logging.traceF(fName, "<<")
+            local result = Generics.makeListNOLOG(self, Track,
+                                                  self.trackByIndex,
+                                                  self:trackCount())
+            Logging.traceF(fName, "<<: %s", result)
             return result
         end
 
@@ -2789,13 +2817,25 @@ require("String")
 
         -- ------------------
 
+        function Track:isSelected ()
+            -- Returns information whether track is selected
+
+            local fName = "Reaper.Track.isSelected"
+            Logging.traceF(fName, ">>: %s", self)
+            local result = (self:_getSetData("I_SELECTED") ~= 0)
+            Logging.traceF(fName, "<<: %s", result)
+            return result
+        end
+
+        -- ------------------
+
         function Track:isSendingToParent ()
             -- Returns information whether track audio is sent to
             -- parent
 
             local fName = "Reaper.Track.isSendingToParent"
             Logging.traceF(fName, ">>: %s", self)
-            local result = (Track:_getSetData("B_MAINSEND") ~= 0)
+            local result = (self:_getSetData("B_MAINSEND") ~= 0)
             Logging.traceF(fName, "<<: %s", result)
             return result
         end
@@ -2861,7 +2901,7 @@ require("String")
 
             local fName = "Reaper.Track.pan"
             Logging.traceF(fName, ">>: %s", self)
-            local result = Track:_getSetData("D_PAN")
+            local result = self:_getSetData("D_PAN")
             Logging.traceF(fName, "<<: %s", result)
             return result
         end
@@ -2873,7 +2913,7 @@ require("String")
 
             local fName = "Reaper.Track.volume"
             Logging.traceF(fName, ">>: %s", self)
-            local result = Track:_getSetData("D_VOL")
+            local result = self:_getSetData("D_VOL")
             Logging.traceF(fName, "<<: %s", result)
             return result
         end
