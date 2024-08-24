@@ -1,13 +1,17 @@
 -- SoXEffectNamesAdjuster -- functional module to change descriptions
 --                           of SoX effects in effects lists
 --
---
--- by Dr. TT, 2023
+-- author: Dr. Thomas Tensi, 2023
+
+local _, scriptPath = reaper.get_action_context()
+local scriptDirectory = scriptPath:match('^.+[\\//]')
+package.path = scriptDirectory .. "?.lua"
 
 -- =======
 -- IMPORTS
 -- =======
 
+require("List")
 require("Logging")
 require("Map")
 require("OperatingSystem")
@@ -18,7 +22,7 @@ require("String")
 -- =======================
 
 local _freqBWString = "'Frequency [Hz]', 'Bandwidth', 'Bandwidth Unit'"
-local _fNameToPList =
+local _filterNameToPList =
     ("{"
      .. " 'allpass' :"
      .. " [ " .. _freqBWString .. " ],"
@@ -43,7 +47,7 @@ local _fNameToPList =
      .. "}")
 
 -- list of default values for filter effects
-local _fNameToDVList =
+local _filterNameToDVList =
     ("{"
      .. " 'allpass' : [ ],"
      .. " 'band' : [ 'No' ],"
@@ -68,11 +72,11 @@ _bandwidthUnitToSuffixMap =
                        .. "}")
 
 -- mapping from filter effect name to parameter name list
-local _filterNameToParameterListMap = String.deserialize(_fNameToPList)
+local _filterNameToParameterListMap = String.deserialize(_filterNameToPList)
 
 -- mapping from filter effect name to list of default values
 local _filterNameToDefaultValueListMap =
-    String.deserialize(_fNameToDVList)
+    String.deserialize(_filterNameToDVList)
 
 -- mapping from filter effect name to position of bandwidth parameter
 -- in parameter value list
@@ -89,7 +93,16 @@ local _filterNameToBWPositionMap =
                        .. " 'lowpass'    : 3,"
                        .. " 'treble'     : 3"
                        .. "}")
-    
+
+local _parameterNameWithSignSet =
+    Set:makeFromIterable(String.deserialize("["
+                                            .. "'Eq. Gain [dB]',"
+                                            .. "'Gain [dB]',"
+                                            .. "'Knee [dB]',"
+                                            .. "'Threshold [dB]',"
+                                            .. "'Wet Gain [dB]'"
+                                            .. "]"))
+
 -- ==========================
 -- PRIVATE FEATURES
 -- ==========================
@@ -276,7 +289,7 @@ function _cmpdEffectStringFromValues (valueList, isMultibandCompander,
         local bandResult =
             String.format(formatString,
                           attack, decay, knee, threshold,
-                          dBValueAtZero, gain)
+                          _valueWithExplicitSign(dBValueAtZero), gain)
 
         if not isLastBand then
             bandResult = bandResult .. " " .. frequency
@@ -297,17 +310,17 @@ function _effectParameterValue (effect, effectParameterName,
     -- <effectParameterName>; if not available, <defaultValue> is
     -- returned
 
-    Logging.trace(">>: effect = %s, parameterName = %s, default = %s",
+    Logging.trace(">>: effect = %s, parameterName = '%s', default = %s",
                   effect, effectParameterName, defaultValue)
 
     local effectParameter =
         effect:parameterByName(effectParameterName)
     local result
 
-    if effectParameter ~= nil then
-        result = effectParameter:value()
-    else
+    if effectParameter == nil then
         result = defaultValue
+    else
+        result = effectParameter:value()
     end
 
     Logging.trace("<<: %s", result)
@@ -558,7 +571,7 @@ function _effectParameterStringForRvrbEffect (effect)
     -- Returns parameter string for a SoX reverb effect
 
     Logging.trace(">>: %s", effect)
-
+    
     local effectParameterNameList =
         String.deserialize("[ 'Is Wet Only?', 'Reverberance [%]',"
                            .. "'HF Damping [%]', 'Room Scale [%]',"
@@ -620,6 +633,11 @@ function _effectParameterValueList (effect,
                           and (effectParameterValue == defaultValue))
 
         if not atDefaultValue then
+            if _parameterNameWithSignSet:contains(effectParameterName) then
+                effectParameterValue =
+                    _valueWithExplicitSign(effectParameterValue)
+            end
+            
             tempList:append(effectParameterValue)
         end
     end
@@ -696,6 +714,30 @@ function _simpleEffectKind (extendedKind)
     end
 
     Logging.trace("<<: '%s'", result)
+    return result
+end
+
+-- --------------------
+
+function _valueWithExplicitSign (value)
+    -- Returns string with explicit sign for given <value>
+
+    Logging.trace(">>: %s", value)
+
+    local result
+    local valueAsNumber = tonumber(value)
+
+    if valueAsNumber == nil then
+        result = value
+    else
+        local hasFractionalPart =
+            (valueAsNumber - math.floor(valueAsNumber)) > 0
+        local template = (iif(valueAsNumber > 0, "+", "")
+                          .. iif(hasFractionalPart, "%s", "%d"))
+        result = String.format(template, valueAsNumber)
+    end
+
+    Logging.trace("<<: %s", result)
     return result
 end
 

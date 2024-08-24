@@ -5,13 +5,13 @@
 --
 -- author: Dr. Thomas Tensi, 2019-08
 
--- ====================
--- IMPORTS
--- ====================
-
 local _, scriptPath = reaper.get_action_context()
 local scriptDirectory = scriptPath:match('^.+[\\//]')
 package.path = scriptDirectory .. "?.lua"
+
+-- =======
+-- IMPORTS
+-- =======
 
 require("math")
 
@@ -48,11 +48,13 @@ local _defaultMidiTrackNamePattern = "S .*"
 local _defaultNoteVelocity = 80
 
 -- the set of control codes to be removed
-local _controlCodeSet = Set:make()
-_controlCodeSet:include( 7) -- volume
-_controlCodeSet:include(10) -- pan
-_controlCodeSet:include(91) -- reverb
-    
+local _controlChangeCodeSet = Set:make()
+_controlChangeCodeSet:include( 0) -- bank select MSB
+_controlChangeCodeSet:include( 7) -- volume
+_controlChangeCodeSet:include(10) -- pan
+_controlChangeCodeSet:include(32) -- bank select LSB
+_controlChangeCodeSet:include(91) -- reverb
+
 -- =======================
 
 function _adaptToRaster (value, rasterSize)
@@ -94,7 +96,8 @@ function _processTake (take)
     -- ensure that there is no accidental shift in the start time
     take:setMediaStartOffset(0)
 
-    _removeUnwantedControlCodes(take)
+    _removeUnwantedControlChanges(take)
+    _removeUnwantedProgramChanges(take)
     _setNoteVelocitiesAndPositions(take)
 
     Logging.trace("<<")
@@ -133,26 +136,47 @@ end
 
 -- --------------------
 
-function _removeUnwantedControlCodes (take)
+function _removeUnwantedControlChanges (take)
     -- Removes control events in <take> as specified in
-    -- <_controlCodeSet>
+    -- <_controlChangeCodeSet>
 
     Logging.trace(">>: %s", take)
 
-    local midiControlEventKind = Reaper.MidiEventKind.controlCode
+    local midiControlEventKind = Reaper.MidiEventKind.controlChange
     local midiControlEventList = take:midiEventList(midiControlEventKind)
     Logging.trace("--: ccEventCount[%s] = %d",
                   take, midiControlEventList:count())
 
-    for eventIndex, controlEvent in midiControlEventList:reversedIterator() do
-        local controlCode = controlEvent.messagePart1
-        local isRelevant = _controlCodeSet:contains(controlCode)
+    for eventIndex, controlChangeEvent
+        in midiControlEventList:reversedIterator() do
+        local controlChangeCode = controlChangeEvent.messagePart1
+        local isRelevant = _controlChangeCodeSet:contains(controlChangeCode)
         Logging.trace("--: index = %d, cc = %d, isRelevant = %s",
-                      eventIndex, controlCode, isRelevant)
+                      eventIndex, controlChangeCode, isRelevant)
 
         if isRelevant then
             midiControlEventList:deleteEvent(eventIndex)
         end
+    end
+
+    Logging.trace("<<")
+end
+
+-- --------------------
+
+function _removeUnwantedProgramChanges (take)
+    -- Removes program change events in <take>
+
+    Logging.trace(">>: %s", take)
+
+    local midiControlEventKind = Reaper.MidiEventKind.programChange
+    local midiControlEventList = take:midiEventList(midiControlEventKind)
+    Logging.trace("--: pcEventCount[%s] = %d",
+                  take, midiControlEventList:count())
+
+    for eventIndex, programChangeEvent
+        in midiControlEventList:reversedIterator() do
+        midiControlEventList:deleteEvent(eventIndex)
     end
 
     Logging.trace("<<")

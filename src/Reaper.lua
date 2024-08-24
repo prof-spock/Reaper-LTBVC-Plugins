@@ -2,9 +2,9 @@
 -- 
 -- author: Dr. Thomas Tensi, 2019-2023
 
--- =======================
+-- =======
 -- IMPORTS
--- =======================
+-- =======
 
 require("math")
 -- require("reaper")
@@ -56,9 +56,10 @@ require("String")
     -- --------------------
 
     local MidiEventKind = {
-        controlCode = "cc",
-        note        = "note",
-        text        = "text"
+        controlChange = "cc",
+        note          = "note",
+        programChange = "pc",
+        text          = "text"
     }
 
     -- --------------------
@@ -72,6 +73,18 @@ require("String")
             result = "preFX"
         else
             result = "postFX"
+        end
+
+        return result
+    end
+
+    -- --------------------
+
+    local function _convertUserData (value)
+        local result = nil
+        
+        if type(value) ~= "number" then
+            result = value
         end
 
         return result
@@ -109,6 +122,7 @@ require("String")
     -- ----------------------------
 
     local ConfigData           = Class:make("ConfigData")
+    local Coroutine            = Class:make("Coroutine")
     local Effect               = Class:make("Effect")
     local EffectParameter      = Class:make("EffectParameter")
     local Generics             = {}
@@ -361,6 +375,73 @@ require("String")
 
 
     -- ====================
+    -- class Coroutine
+    -- ====================
+        -- This class provides services for handling coroutines (with
+        -- yielding control back to Reaper).
+
+        -- ------------------
+        -- PRIVATE FEATURES
+        -- ------------------
+
+        Coroutine._totalCount = 0
+
+        Coroutine._exitProc = nil
+            -- routine to be executed at end of scheduling
+
+        -- --------------------
+
+        function Coroutine.atExit (routine)
+            -- tells the <routine> to be executed at end of scheduling
+
+            local fName = "Reaper.Coroutine.atExit"
+            Logging.traceF(fName, ">>")
+            Coroutine.exitProc = routine
+            Logging.traceF(fName, "<<")
+        end
+
+        -- --------------------
+
+        function Coroutine.setMaximumDialogDuration (durationInSeconds)
+            -- sets maximum dialog duration to <durationInSeconds>;
+            -- when zero, sets to a "big" value
+
+            local fName = "Reaper.Coroutine.setMaximumDialogDuration"
+            Logging.traceF(fName, ">>: %s", durationInSeconds)
+
+            durationInSeconds = iif(durationInSeconds == 0, 999999.0,
+                                    durationInSeconds)
+            Coroutine._totalCount = math.floor(30.0 * durationInSeconds)
+
+            Logging.traceF(fName, "<<")
+        end
+
+        -- --------------------
+
+        function Coroutine.yield (coroutine, isDone)
+            -- checks whether <coroutine> shall be further called or
+            -- processing is done completely (via <isDone>)
+
+            local fName = "Reaper.Coroutine.yield"
+            Logging.traceF(fName, ">>: isDone = %s", isDone)
+
+            if not isDone and Coroutine._totalCount > 0 then
+                Coroutine._totalCount = Coroutine._totalCount - 1
+                reaper.defer(coroutine)
+            elseif Coroutine._exitProc ~= nil then
+                Logging.traceF(fName, "--: transfer to exit handler")
+                Coroutine._exitProc()
+            end
+
+            Logging.traceF(fName, "<<")
+        end
+
+    -- =====================
+    -- end Coroutine
+    -- =====================
+
+
+    -- ====================
     -- class Effect
     -- ====================
         -- This class provides services for effects associated to
@@ -431,11 +512,11 @@ require("String")
 
             local parameterCreationProc =
                 function (effect, parameterIndex)
-                    return EffectParameter:make(effect, parameterIndex)
+                    return EffectParameter:makeNOLOG(effect, parameterIndex)
                 end
-            local result = Generics.makeList(self, EffectParameter,
-                                             parameterCreationProc,
-                                             self:_parameterCountNOLOG())
+            local result = Generics.makeListNOLOG(self, EffectParameter,
+                                                  parameterCreationProc,
+                                                  self:_parameterCountNOLOG())
             return result
         end
 
@@ -476,7 +557,7 @@ require("String")
                                                             reaperFXIndex)
             result = iif(not isOkay, "", result)
 
-            Logging.traceF(fName, "<<: %s", result)
+            Logging.traceF(fName, "<<: '%s'", result)
             return result
         end
 
@@ -507,7 +588,7 @@ require("String")
             local fName = "Reaper.Effect.identification"
             Logging.traceF(fName, ">>: %s", self)
             local result = self:_configurationParameterNOLOG("fx_ident")
-            Logging.traceF(fName, "<<: %s", result)
+            Logging.traceF(fName, "<<: '%s'", result)
             return result
         end
 
@@ -548,7 +629,7 @@ require("String")
             local fName = "Reaper.Effect.kind"
             Logging.traceF(fName, ">>: %s", self)
             local result = self:_configurationParameterNOLOG("fx_name")
-            Logging.traceF(fName, "<<: %s", result)
+            Logging.traceF(fName, "<<: '%s'", result)
             return result
         end
 
@@ -571,7 +652,7 @@ require("String")
             -- if not found
 
             local fName = "Reaper.Effect.parameterByName"
-            Logging.traceF(fName, ">>: effect = %s, parameterName = %s",
+            Logging.traceF(fName, ">>: effect = %s, parameterName = '%s'",
                            self, name)
             assert(not self:_isContainerNOLOG(),
                    "parameters not available for container effect")
@@ -728,6 +809,18 @@ require("String")
         -- EXPORTED FEATURES
         -- ------------------
 
+        function EffectParameter.makeNOLOG (cls, effect, index)
+            -- Returns effect parameter with number <index> associated
+            -- with <effect> (without logging)
+
+            local result = cls:makeInstance()
+            result._index  = index
+            result._effect = effect
+            return result
+        end
+
+        -- ------------------
+
         function EffectParameter.make (cls, effect, index)
             -- Returns effect parameter with number <index> associated
             -- with <effect>
@@ -735,11 +828,7 @@ require("String")
             local fName = "Reaper.EffectParameter.make"
             Logging.traceF(fName, ">>: effect = %s, index = %d",
                            effect, index)
-
-            local result = cls:makeInstance()
-            result._index  = index
-            result._effect = effect
-
+            local result = EffectParameter.makeNOLOG(cls, effect, index)
             Logging.traceF(fName, "<<: %s", result)
             return result
         end
@@ -754,7 +843,7 @@ require("String")
             local fName = "Reaper.EffectParameter.name"
             Logging.traceF(fName, ">>: %s", self)
             local result = self:_nameNOLOG()
-            Logging.traceF(fName, "<<: %s", result)
+            Logging.traceF(fName, "<<: '%s'", result)
             return result
         end
 
@@ -1463,13 +1552,45 @@ require("String")
                                                   eventIndex - 1)
 
             local result = cls:makeInstance()
-            result.kind           = MidiEventKind.controlCode
+            result.kind           = MidiEventKind.controlChange
             result.isSelected     = isSelected
             result.isMuted        = isMuted
             result.startPosition  = startPosition
             result.channel        = channel + 1
 
             -- control event specific attributes
+            result.channelMessage = channelMessage
+            result.messagePart1   = channelMsg1
+            result.messagePart2   = channelMsg2
+
+            Logging.traceF(fName, "<<: %s", result)
+            return result
+        end
+
+        -- ------------------
+
+        function MidiEvent.makeProgramChangeEvent (cls, take, eventIndex)
+            -- Constructs a midi take event from <take> and
+            -- <eventIndex>
+
+            local fName = "Reaper.MidiEvent.makeProgramChangeEvent"
+            Logging.traceF(fName,
+                           ">>: take = %s, index = %s",
+                           take, eventIndex)
+
+            local _, isSelected, isMuted, startPosition,
+                  channelMessage, channel, channelMsg1,
+                  channelMsg2 = reaper.MIDI_GetCC(take._peerObject,
+                                                  eventIndex - 1)
+
+            local result = cls:makeInstance()
+            result.kind           = MidiEventKind.programChange
+            result.isSelected     = isSelected
+            result.isMuted        = isMuted
+            result.startPosition  = startPosition
+            result.channel        = channel + 1
+
+            -- program change event specific attributes
             result.channelMessage = channelMessage
             result.messagePart1   = channelMsg1
             result.messagePart2   = channelMsg2
@@ -1523,7 +1644,8 @@ require("String")
                                self.startPosition, self.channel)
 
             -- extend the result by kind-specific data
-            if self.kind == MidiEventKind.controlCode then
+            if (self.kind == MidiEventKind.controlChange
+                or self.kind == MidiEventKind.programChange) then
                 template = (" channelMessage = %s, messagePart1 = %s,"
                             .. " messagePart2 = %s")
                 st = st .. String.format(template,
@@ -1592,7 +1714,8 @@ require("String")
 
             if self._eventKind == MidiEventKind.note then
                 reaper.MIDI_DeleteNote(reaperTake, eventIndex - 1)
-            elseif self._eventKind == MidiEventKind.controlCode then
+            elseif (self._eventKind == MidiEventKind.controlChange
+                    or self._eventKind == MidiEventKind.programChange) then
                 reaper.MIDI_DeleteCC(reaperTake, eventIndex - 1)
             end
 
@@ -2527,12 +2650,23 @@ require("String")
                 end
             end
 
-            if eventKind == MidiEventKind.controlCode then
+            if (eventKind == MidiEventKind.controlChange
+                or eventKind == MidiEventKind.programChange) then
                 for i = 1, ccEventCount do
-                    local midiCCEvent = MidiEvent:makeControlEvent(self, i)
-                    result:append(midiCCEvent)
+                    local _, _, _, _, channelMessage, _, _, _ =
+                        reaper.MIDI_GetCC(reaperTake, i - 1)
+                    local isControlChange =
+                        eventKind == MidiEventKind.controlChange
+                    local isRelevant =
+                        isControlChange == (channelMessage // 16 == 0xB)
+
+                    if isRelevant then
+                        local midiEvent = MidiEvent:makeControlEvent(self, i)
+                        result:append(midiEvent)
+                    end
                 end
             end
+
 
             Logging.traceF(fName, "<<: %d events", result:count())
             return result
@@ -2605,7 +2739,8 @@ require("String")
                                     midiEvent.pitch,
                                     midiEvent.velocity,
                                     true)
-            elseif midiEvent.kind == MidiEventKind.controlCode then
+            elseif (midiEvent.kind == MidiEventKind.controlChange
+                    or midiEvent.kind == MidiEventKind.programChange) then
                 reaper.MIDI_SetCC(reaperTake, index - 1,
                                   midiEvent.isSelected,
                                   midiEvent.isMuted,
@@ -2731,8 +2866,7 @@ require("String")
             -- value to be written
 
             local reaperTrack = self._peerObject
-            local isStringParameter = String.hasPrefix(parameterName,
-                                                       "P_")
+            local isStringParameter = (parameterName == "P_NAME")
             local _, result
 
             if isStringParameter then
@@ -2749,6 +2883,11 @@ require("String")
             else
                 result = reaper.GetMediaTrackInfo_Value(reaperTrack,
                                                         parameterName)
+
+                if String.hasPrefix(parameterName, "P_") then
+                    -- adjust pointer information
+                    result = _convertUserData(result)
+                end
             end
 
             return result
@@ -2817,6 +2956,18 @@ require("String")
 
         -- ------------------
 
+        function Track:isMuted ()
+            -- Returns information whether track is muted
+
+            local fName = "Reaper.Track.isMuted"
+            Logging.traceF(fName, ">>: %s", self)
+            local result = (self:_getSetData("B_MUTE") ~= 0)
+            Logging.traceF(fName, "<<: %s", result)
+            return result
+        end
+
+        -- ------------------
+
         function Track:isSelected ()
             -- Returns information whether track is selected
 
@@ -2836,6 +2987,18 @@ require("String")
             local fName = "Reaper.Track.isSendingToParent"
             Logging.traceF(fName, ">>: %s", self)
             local result = (self:_getSetData("B_MAINSEND") ~= 0)
+            Logging.traceF(fName, "<<: %s", result)
+            return result
+        end
+
+        -- ------------------
+
+        function Track:isSoloed ()
+            -- Returns information whether track is soloed
+
+            local fName = "Reaper.Track.isSoloed"
+            Logging.traceF(fName, ">>: %s", self)
+            local result = (self:_getSetData("I_SOLO") ~= 0)
             Logging.traceF(fName, "<<: %s", result)
             return result
         end
@@ -2908,6 +3071,25 @@ require("String")
 
         -- ------------------
 
+        function Track:parent ()
+            -- Returns parent track of track
+
+            local fName = "Reaper.Track.parent"
+            Logging.traceF(fName, ">>: %s", self)
+
+            local result = nil
+            local reaperParentTrack = self:_getSetData("P_PARTRACK")
+
+            if reaperParentTrack ~= nil then
+                result = Track:_make(reaperParentTrack)
+            end
+            
+            Logging.traceF(fName, "<<: %s", result)
+            return result
+        end
+
+        -- ------------------
+
         function Track:volume ()
             -- Returns volume of track
 
@@ -2921,6 +3103,20 @@ require("String")
         -- ················
         -- attribute change
         -- ················
+
+        function Track:setMuted (isMuted)
+            -- Sets track to muted or unmuted depending on
+            -- <isMuted>
+
+            local fName = "Reaper.Track.setMuted"
+            Logging.traceF(fName, ">>: track = %s, isMuted = %s",
+                           self, isMuted)
+            local value = iif(isMuted, 1, 0)
+            self:_getSetData("B_MUTE", true, value)
+            Logging.traceF(fName, "<<")
+        end
+
+        -- ------------------
 
         function Track:setName (name)
             -- Sets name of track to <name>
@@ -2980,6 +3176,20 @@ require("String")
             Logging.traceF(fName, ">>: track = %s, pan = %s",
                            self, panPosition)
             self:_getSetData("D_PAN", true, panPosition)
+            Logging.traceF(fName, "<<")
+        end
+
+        -- ------------------
+
+        function Track:setSoloed (isSoloed)
+            -- Sets track to soloed or unsoloed depending on
+            -- <isSoloed>
+
+            local fName = "Reaper.Track.setSoloed"
+            Logging.traceF(fName, ">>: track = %s, isSoloed = %s",
+                           self, isSoloed)
+            local value = iif(isSoloed, 1, 0)
+            self:_getSetData("I_SOLO", true, value)
             Logging.traceF(fName, "<<")
         end
 
@@ -3711,6 +3921,7 @@ require("String")
 
     Reaper = {
         ConfigData  = { get = ConfigData.get },
+        Coroutine   = Coroutine,
         MediaItem   = { make = MediaItem.make },
         MediaSource = { make = MediaSource.make },
         MidiEventKind = MidiEventKind,

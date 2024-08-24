@@ -7,10 +7,11 @@
 -- IMPORTS
 -- ====================
 
+require("math")
+
 require("List")
 require("Logging")
 require("Map")
-require("math")
 require("Set")
 require("String")
 
@@ -112,7 +113,7 @@ Lilypond      = {}
 
             local fName = "Lilypond.SplitHandler._findDurations"
             Logging.traceF(fName,
-                           ">>: relativePosition = %d, duration = %d, "
+                           ">>: relativePosition = %d, duration = %d,"
                            .. " maxSeqLength = %d, inTripletSeq = %s,"
                            .. " dottedIsOkay = %s",
                            relativePositionInMeasure, duration,
@@ -179,7 +180,7 @@ Lilypond      = {}
             local fName =
                       "Lilypond.SplitHandler._findDurationsForOneVariant"
             Logging.traceF(fName,
-                           ">>: relativePosition = %d, duration = %d, "
+                           ">>: relativePosition = %d, duration = %d,"
                            .. " maxSeqLength = %d, inTripletSeq = %s,"
                            .. " dottedIsOkay = %s",
                            relativePositionInMeasure, duration,
@@ -1852,7 +1853,7 @@ Lilypond      = {}
 
         local fName = "Lilypond.convertTakeToLilypondString"
         Logging.traceF(fName,
-                       ">>: take = '%s', ticksPerQuarterNote = %s, "
+                       ">>: take = '%s', ticksPerQuarterNote = %s,"
                        .. " noteList = '%s', mbTickList = '%s',"
                        .. " endPosition = %d",
                        takeName, ticksPerQuarterNote,

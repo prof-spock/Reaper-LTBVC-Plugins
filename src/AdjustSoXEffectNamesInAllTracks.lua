@@ -8,9 +8,6 @@
 local _, scriptPath = reaper.get_action_context()
 local scriptDirectory = scriptPath:match('^.+[\\//]')
 package.path = scriptDirectory .. "?.lua"
-package.path = ("C:/Programme_LOKAL/Multimedia/MIDI/Reaper"
-                .. "/Scripts/DrTT-LTBVC_(Lua)/PluginsForLTBVC"
-                .. "/?.lua")
 
 -- =======
 -- IMPORTS

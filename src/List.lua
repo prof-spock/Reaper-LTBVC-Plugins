@@ -141,6 +141,14 @@ List = Class:make("List")
     -- status report
     -- ················
 
+    function List:contains (element)
+        -- Tells whether <element> is in list
+
+        return self:find(element) > 0
+    end
+
+    -- --------------------
+
     function List:isEmpty ()
         -- Tells whether list has no elements
 

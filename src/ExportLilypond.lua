@@ -3,13 +3,13 @@
 --
 -- author: Dr. Thomas Tensi, 2019-08
 
--- ====================
--- IMPORTS
--- ====================
-
 local _, scriptPath = reaper.get_action_context()
 local scriptDirectory = scriptPath:match('^.+[\\//]')
 package.path = scriptDirectory .. "?.lua"
+
+-- =======
+-- IMPORTS
+-- =======
 
 require("Logging")
 require("Lilypond")

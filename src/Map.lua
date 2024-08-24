@@ -148,6 +148,20 @@ Map = Class:make("Map")
         return result
     end
 
+    -- --------------------
+
+    function Map:valueSet ()
+        -- Returns set of all values in map
+
+        local result = Set:make()
+
+        for _, value in pairs(self._data) do
+            result:include(value)
+        end
+
+        return result
+    end
+
     -- ················
     -- element access
     -- ················

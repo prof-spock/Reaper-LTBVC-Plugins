@@ -72,7 +72,7 @@ OperatingSystem = {}
         extensionIsShown = iif(extensionIsShown == nil,
                                true, extensionIsShown)
         cls = OperatingSystem
-        Logging.traceF(fName, ">>: fileName = %s, extensionIsShown = %s",
+        Logging.traceF(fName, ">>: fileName = '%s', extensionIsShown = %s",
                        fileName, extensionIsShown)
 
         local nameList = String.split(fileName, cls.pathSeparator)
@@ -85,7 +85,7 @@ OperatingSystem = {}
             result = String.join(partList, ".")
         end
         
-        Logging.traceF(fName, "<<: %s", result)
+        Logging.traceF(fName, "<<: '%s'", result)
         return result
     end
 
@@ -95,7 +95,7 @@ OperatingSystem = {}
         -- Returns directory of <filePath>
 
         local cls = OperatingSystem
-        Logging.trace(">>: %s", filePath)
+        Logging.trace(">>: '%s'", filePath)
 
         local separator = cls.pathSeparator
         filePath = filePath:gsub("[\\/]", separator)
@@ -103,7 +103,7 @@ OperatingSystem = {}
         nameList:removeLast()
         local result = String.join(nameList, separator)
 
-        Logging.trace("<<: %s", result)
+        Logging.trace("<<: '%s'", result)
         return result
     end
 
@@ -114,9 +114,9 @@ OperatingSystem = {}
         -- returns nil on failure
 
         local fName = "OperatingSystem.getEnvironmentVariable"
-        Logging.traceF(fName, ">>: %s", name)
+        Logging.traceF(fName, ">>: '%s'", name)
         local result = OperatingSystem._getEnvironmentVariableNOLOG(name)
-        Logging.traceF(fName, "<<: %s", result)
+        Logging.traceF(fName, "<<: '%s'", result)
         return result
     end
 
@@ -129,7 +129,7 @@ OperatingSystem = {}
 
         local fName = "OperatingSystem.hasDirectory"
         Logging.traceF(fName,
-                       ">>: directory = %s, isWritable = %s",
+                       ">>: directory = '%s', isWritable = %s",
                        directoryName, isWritable)
 
         local result, errorText =
@@ -150,7 +150,7 @@ OperatingSystem = {}
         -- file system
 
         local fName = "OperatingSystem.hasFile"
-        Logging.traceF(fName, ">>: %s", fileName)
+        Logging.traceF(fName, ">>: '%s'", fileName)
 
         local result, errorText = OperatingSystem._fileExistsNOLOG(fileName)
 
@@ -174,7 +174,7 @@ OperatingSystem = {}
         result = result or cls.getEnvironmentVariable("HOME")
         result = result or ""
 
-        Logging.trace("<<: %s", result)
+        Logging.trace("<<: '%s'", result)
         return result
     end
 
@@ -185,7 +185,7 @@ OperatingSystem = {}
         -- absolute path in the operating system
 
         local fName = "OperatingSystem.isAbsolutePath"
-        Logging.traceF(fName, ">>: fileName = %s", fileName)
+        Logging.traceF(fName, ">>: fileName = '%s'", fileName)
 
         local windowsPatternMatch =
                   String.findPattern(fileName, "^[A-Za-z]:[/\\]")
@@ -212,7 +212,7 @@ OperatingSystem = {}
         -- all fail, <defaultDirectoryName> is returned when writable
 
         local fName = "OperatingSystem.selectDirectory"
-        Logging.traceF(fName, ">>: %s", defaultDirectoryName)
+        Logging.traceF(fName, ">>: '%s'", defaultDirectoryName)
 
         local directoryNameList = List:make()
 
@@ -237,7 +237,7 @@ OperatingSystem = {}
             end
         end
 
-        Logging.traceF(fName, "<<: %s", result)
+        Logging.traceF(fName, "<<: '%s'", result)
         return result
     end
 

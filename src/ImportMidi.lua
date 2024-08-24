@@ -1,13 +1,15 @@
 -- importMIDI - scans current project for external MIDI file reference
 --              and updates all affected tracks
-
--- ====================
--- IMPORTS
--- ====================
+--
+-- author: Dr. Thomas Tensi, 2019-08
 
 local _, scriptPath = reaper.get_action_context()
 local scriptDirectory = scriptPath:match('^.+[\\//]')
 package.path = scriptDirectory .. "?.lua"
+
+-- =======
+-- IMPORTS
+-- =======
 
 require("List")
 require("Logging")
@@ -95,15 +97,17 @@ end
 -- --------------------
 
 function findMidiFileFromTracks (project)
-    -- Returns position of MIDI file calculated from <project> path
-    -- and first take with a name containing ".mid"
+    -- Returns path of MIDI file calculated from <project> path and
+    -- first take with a name containing ".mid" and the start time in
+    -- the project of that take
 
     Logging.trace(">>: %s", project)
 
-    local result
+    local midiFilePath
+    local startTime = project:timeOffset()
     local trackList = project:trackList()
-    local midiFilePath = midiFileDirectoryPath(project)
-    Logging.trace("--: midiFilePath = %s", midiFilePath)
+    local midiFileDirectoryPath = midiFileDirectoryPath(project)
+    Logging.trace("--: midiFileDirectoryPath = %s", midiFileDirectoryPath)
 
     for _, track in trackList:iterator() do
         local isOkay, mediaItem, take =
@@ -113,18 +117,20 @@ function findMidiFileFromTracks (project)
             local takeName = take:name()
 
             if String.hasSuffix(takeName, ".mid") then
-                result = String.globalReplace(takeName, ".+ ", "")
+                midiFilePath = String.globalReplace(takeName, ".+ ", "")
+                startTime = take:startPosition()
                 break
             end
         end
     end
 
-    if result ~= nil then
-        result = midiFilePath .. "/" .. result
+    if midiFilePath ~= nil then
+        midiFilePath = midiFileDirectoryPath .. "/" .. midiFilePath
     end
 
-    Logging.trace("<<: %s", result)
-    return result
+    Logging.trace("<<: midiFilePath = '%s', startTime = %s",
+                  midiFilePath, startTime)
+    return midiFilePath, startTime
 end
 
 -- --------------------
@@ -175,23 +181,23 @@ function handleUnwantedMidiEvents (trackIndex, take)
 
     Logging.trace(">>: %s", take)
 
-    -- control codes to be deleted
-    local panControlCode = 10
-    local reverbControlCode = 91
-    local volumeControlCode = 7
+    -- control change codes to be deleted
+    local panControlChangeCode = 10
+    local reverbControlChangeCode = 91
+    local volumeControlChangeCode = 7
 
-    local midiControlEventKind = Reaper.MidiEventKind.controlCode
+    local midiControlEventKind = Reaper.MidiEventKind.controlChange
     local midiControlEventList = take:midiEventList(midiControlEventKind)
     local eventCount = midiControlEventList:count()
 
     Logging.trace("--: ccEventCount[%s] = %d", take, eventCount)
 
     for eventIndex, controlEvent in midiControlEventList:reversedIterator() do
-        local controlCode = controlEvent.messagePart1
-        Logging.trace("--: index = %d, cc = %d", eventIndex, controlCode)
-        local isRelevant = (controlCode == reverbControlCode
-                            or controlCode == volumeControlCode
-                            or controlCode == panControlCode)
+        local controlChange = controlEvent.messagePart1
+        Logging.trace("--: index = %d, cc = %d", eventIndex, controlChange)
+        local isRelevant = (controlChange == reverbControlChangeCode
+                            or controlChange == volumeControlChangeCode
+                            or controlChange == panControlChangeCode)
 
         if isRelevant then
             midiControlEventList:deleteEvent(eventIndex)
@@ -203,16 +209,13 @@ end
 
 -- --------------------
 
-function insertMediaFile (project, midiFileName)
+function insertMediaFile (project, midiFileName, startTime)
     -- Inserts midi file given by <midiFileName> into several tracks
-    -- after last track of <project>; returns whether insertion was
-    -- successful
+    -- after last track of <project> starting at <startTime>; returns
+    -- whether insertion was successful
 
-    Logging.trace(">>: project = %s, midiFileName = %s",
-                  project, midiFileName)
-
-    -- insert midi file into several tracks after last track
-    local startTime = project:timeOffset()
+    Logging.trace(">>: project = '%s', midiFileName = '%s', startTime = %s",
+                  project, midiFileName, startTime)
 
     -- make empty track for separation and as the insertion point
     local track = project:makeTrack()
@@ -320,18 +323,19 @@ end
 
 -- --------------------
 
-function updateMidiTracks (project, midiFileName)
+function updateMidiTracks (project, midiFileName, startTime)
     -- Updates midi track in <project> by tracks in midi file given by
-    -- <midiFileName>; returns whether insertion was done (or
-    -- cancelled)
+    -- <midiFileName> inserted at time <startTime>; returns whether
+    -- insertion was done (or cancelled)
 
-    Logging.trace(">>: project = %s, file = %s",
-                  project, midiFileName)
+    Logging.trace(">>: project = '%s', file = '%s', startTime = %s",
+                  project, midiFileName, startTime)
 
     local previousTrackCount = project:trackCount()
 
     -- insert midi file
-    local insertionIsDone = insertMediaFile(project, midiFileName)
+    local insertionIsDone =
+        insertMediaFile(project, midiFileName, startTime)
 
     if insertionIsDone then
         -- move tracks to end of list
@@ -395,7 +399,7 @@ function main ()
 
     local message
     local project = Reaper.Project.current()
-    local midiFileName = findMidiFileFromTracks(project)
+    local midiFileName, startTime = findMidiFileFromTracks(project)
     local fileExists = (midiFileName ~= nil
                         and OperatingSystem.hasFile(midiFileName))
 
@@ -404,7 +408,7 @@ function main ()
     elseif not fileExists then
         message = "Could not find file: " .. midiFileName
     else
-        local isOkay = updateMidiTracks(project, midiFileName)
+        local isOkay = updateMidiTracks(project, midiFileName, startTime)
         message = iif(isOkay, "Import done.", "Import cancelled.")
     end
     

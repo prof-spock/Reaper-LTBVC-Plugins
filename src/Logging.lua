@@ -89,6 +89,7 @@ Logging = {}
 
         if debugInfo ~= nil then
             local functionName = debugInfo.name
+            functionName = iif(functionName == nil, "???", functionName)
             local fileName = String.globalReplace(debugInfo.short_src,
                                                   ".*[/\\]", "")
             local moduleName = String.globalReplace(fileName,
@@ -190,6 +191,7 @@ Logging = {}
         local footer = "END LOGGING"
         Logging._writeLine(footer)
         Logging._closeFileConditionally()
+        Logging._isEnabled = false
     end
 
     -- --------------------
@@ -286,7 +288,8 @@ Logging = {}
         -- <format> and additional parameters; inserts "--" prefix to
         -- format and adds name of calling function
 
-        local functionName = Logging._callingFunctionName(format)
+        local functionName =
+            Logging._callingFunctionName("--: " .. format)
         Logging.traceErrorF(functionName, format, ...)
     end
 

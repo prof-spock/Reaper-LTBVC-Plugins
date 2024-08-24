@@ -8,7 +8,7 @@ DAW][reference:reaper]; they assist in using the
 [LilypondToBandVideoConverter][reference:ltbvc]
 tool chain for generating notation videos from arrangement text files.
 
-The six scripts provide the following services:
+The scripts provide the following services:
 
   - *AdaptTracksToLTBVCConventions.lua:* applies specific theme and
     layouts to the tracks and routes audio according to LTBVC
@@ -37,6 +37,12 @@ The six scripts provide the following services:
     velocities to some default and quantizing the positions and
     lengths
 
+  - *SelectLTBVCAudioSources.lua:* allows the simple selection of the
+    audio source for each voice by a selection dialog in a Reaper
+    project conforming to LTBVC conventions (for example, to compare
+    the rendering of the MIDI or raw audio file with the refined audio
+    file in the final mix).
+         
 They rely on several additional Lua modules provided in the package.
 
 ## Installation

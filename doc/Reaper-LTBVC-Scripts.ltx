@@ -19,8 +19,8 @@
     %-- CONFIGURATION --
     %-------------------
 
-    \newcommand{\currentVersion}{1.1}
-    \newcommand{\currentVersionDate}{2023-07-04}
+    \newcommand{\currentVersion}{1.2}
+    \newcommand{\currentVersionDate}{2024-08-12}
 
     %------------
     %-- TITLES --
@@ -258,14 +258,20 @@ The following scripts are provided:
     \item[MakeRegionsFromRegionStructureTrack.lua:] either makes
          regions based on a track with structural MIDI items or
          generates that region structure track with MIDI items from
-         the current regions, and
+         the current regions,
 
     \item[NormalizeStructuredVoiceTracks.lua:] scans all tracks with
          some specific prefix and normalizes their enclosed MIDI items
          by removing reverb, chorus and delay control codes, setting
          note velocities to some default and quantizing the note start
-         and end positions.
+         and end positions, and
 
+    \item[SelectLTBVCAudioSources.lua:] allows the simple selection of
+         the audio source for each voice by a selection dialog in a
+         Reaper project conforming to LTBVC conventions (for example,
+         to compare the rendering of the MIDI or raw audio file with
+         the refined audio file in the final mix).
+         
 \end{ttDescription}
 
 %====================================
@@ -442,10 +448,11 @@ figure~\ref{figure:adaptStructure-tracks}):
           signal (apart from the missing humanization in the
           structured track).
 
-    \item The output of the voice SoX effect track and the refined
-          audio track are both routed into the voice mix track to have
-          pan and volume applied for the final mix.  Routing is pre-FX
-          for the refined audio track and post-FX for the effect track.
+    \item The output of the original audio tracks, the voice SoX
+          effect track and the refined audio track are both routed
+          into the voice mix track to have pan and volume applied for
+          the final mix.  Routing is pre-FX for the refined audio
+          track and post-FX for the effect and original track.
 
           As an additional trick the refined audio track is phase
           inverted.  This means that when both effect track and
@@ -471,7 +478,7 @@ accordingly.  Reaper allows to customize the track layout as required,
 so there is a layout style to be preferably applied to an
 \ltbvc\ project.
 
-The whole proceedure looks tedious: routing tracks and setting their
+The whole procedure looks tedious: routing tracks and setting their
 layout to reflect their function manually.
 
 Fortunately the script \embeddedCode{AdaptTracksToLTBVCConventions}
@@ -480,11 +487,14 @@ figure~\ref{figure:adaptStructure-tracks} via some naming conventions
 and also applies track layouts to them.
 
 Both naming convention and layout assignment is handled by the script
-based on a so-called ``configuration file''.  This is a text file that
-defines several variables and is either located in the script
-directory or in the directory \embeddedCode{.luasettings} in the
-user's home directory.  (For a detailed description of configuration
-files see the
+based on a so-called ``configuration file''.  This is a text file
+named ``LTBVC\_trackConventions.cfg'' that defines several variables
+and is either located in the script directory or in the directory
+\embeddedCode{.luasettings} in the user's home directory.  An example
+is provided in the \embeddedCode{misc} subdirectory of the
+distribution.
+
+(For a detailed description of configuration files see the
 \ltbvc\ documentation~\cite{reference:lilypondToBandVideoConverter}.)
 
 The variables relevant for this script are
@@ -911,6 +921,164 @@ follows:
 
 \end{itemize}
 
+
+%---------------------------------
+\section{SelectLTBVCAudioSources}
+\label{section:selectAudioSources}
+%---------------------------------
+
+The track structure described in
+section~\ref{section:adaptTrackLayouts} is very systematic, but it is
+tedious to switch between the different stages for a single voice.
+
+For example, when you want to compare the MIDI track with effects
+applied to it with the refined audio track of the same voice and
+assuming the MIDI track is currently active, one has to
+\begin{itemize}
+
+    \item Scroll to the MIDI track of the voice in the track or mixer
+          panel.
+
+    \item Mute that MIDI track.
+      
+    \item Scroll to the refined audio track of the same voice in the
+          track or mixer panel.
+
+    \item Unmute that track.
+
+\end{itemize}
+
+This gets annoying especially when the effects track of that voice is
+also involved.
+
+Here the script \embeddedCode{SelectLTBVCAudioSources} comes in handy:
+it presents all available audio sources within an LTBVC project in a
+selection dialog with a matrix of voices and audio sources.
+Additionally the final voice track may be muted or soloed for
+individual analysis.
+
+\begin{centeredFigureHere}
+    \centeredExternalPicture{0.8}
+                            {selectAudioSources.png}
+    \caption{Selection Dialog for Audio Sources in LTBVC project}
+    \label{figure:selectAudioTracks}
+\end{centeredFigureHere}
+
+Typically you will assign this script to some key for quick access and
+then a selection dialog as shown in
+figure~\ref{figure:selectAudioTracks} occurs.
+
+The voices are lined up in rows, the audio source tracks in columns
+with some code letters for each track category.  Additionally the
+first two columns allow to mute or solo the final track for that voice.
+
+In the above figure the following settings for the voices are active:
+\begin{itemize}
+
+    \item \textbf{bass:} uses the ``original'' track and has its
+          ``final'' track soloed,
+
+    \item \textbf{drums, vocals:} use the ``refinedaudio'' track,
+
+    \item \textbf{guitar:} uses the ``generated MIDI'' track, has
+          additionally its ``effects'' track active and its ``final''
+          track muted,
+
+    \item \textbf{intro:} uses the ``refined audio'' track and
+          obviously has no other audio tracks available in this project,
+
+    \item \textbf{keyboard:} uses the ``structure MIDI'' track and
+          additionally has its ``effects'' track active, and
+
+    \item \textbf{strings:} uses the ``generated MIDI'' track and
+          additionally has its ``effects'' track active.
+
+\end{itemize}
+
+The ``effects'' track of some voice is automatically switched on and
+off, when some selected or deselected audio source is routed into
+them: hence a click into that column does not have any effect.  Note
+that unavailable track kinds for a voice are shown as crossed out.
+
+The audio source selection is changed by clicking on the appropriate
+cell in the matrix.  MUTE and SOLO can be clicked at any time, but the
+other sources typically behave like radio buttons and deselect an
+existing selection.  For example, when clicking on some ``refined
+audio'' cell, a correspondingly selected ``generated MIDI'' and
+``effects'' cell will be cleared.
+
+A shift-click \emph{adds} the existing cell to the selections for that
+voice.  This is normally nonsensical, but may be helpful, when some
+tracks are phase-inverted.  For example, the ``refined audio'' tracks
+in the typical configuration are: then you can check whether some
+renderings cancel out.
+
+All the settings for the configuration dialog are again provided by
+the configuration file ``LTBVC\_trackConventions.cfg'' (see
+section~\ref{section:adaptTrackLayouts} above).
+
+The variables relevant for this script are
+\embeddedCode{trackNamePatternAndHeaderList},
+\embeddedCode{trackNamePatternForVoiceEffects},
+\embeddedCode{trackNamePatternForVoiceFinal},
+\embeddedCode{trackNamePatternSentToEffectsList}, and
+\embeddedCode{selectionDialogIdleDuration}.
+
+\embeddedCode{trackNamePatternAndHeaderList} is a list of pairs.  Each
+pair contains a track name pattern signifying track categories
+(e.g. effects or raw audio tracks) as its first part and a column
+header for that category in the selection dialog.  The list gives the
+order of columns in the selection dialog (preceeded by the mute and
+solo columns).
+
+For example, the list entry
+\begin{configurationFileCode}
+    trackNamePatternAndHeaderList =
+        ...
+        " [ '^E%s+(%S.*)', 'E' ],"
+        ...
+\end{configurationFileCode}
+tells that an effect track (starting with an ``E'' character and some
+white space followed by the voice name) has ``E'' as the heading in
+the selection dialog (as shown in the above figure).
+
+\embeddedCode{trackNamePatternForVoiceEffects} and
+\embeddedCode{trackNamePatternForVoiceFinal} give the track name
+patterns for the special effects and final tracks.
+
+For example, the line
+\begin{configurationFileCode}
+    trackNamePatternForVoiceFinal = "^F%s+(%S.*)"
+\end{configurationFileCode}
+tells that the final tracks start with the letter ``F'' followed by
+white space and some non-blank text (the voice name).
+
+\embeddedCode{trackNamePatternSentToEffectsList} is a list of track
+name patterns where those tracks are fed into the effects voice track.
+
+For example, the lines
+\begin{configurationFileCode}
+    trackNamePatternSentToEffectsList = "["
+        " '^S%s+(%S.*)',"
+        " '^M%s+(%S.*)',"
+        " '^RA%s+(%S.*)'"
+    "]"
+\end{configurationFileCode}
+tells that tracks with the given name patterns (i.e. ``structured
+MIDI'', ``generated MIDI'' and ``raw audio'') are routed into the
+effects track and hence have to activate that track when selected.
+
+Finally \embeddedCode{selectionDialogIdleDuration} gives the maximum
+idle duration for the selection dialog in seconds.  When nothing
+happens the dialog automatically closes after that duration.  Zero
+means that the dialog stays open until explicitly closed.
+
+As you might have noticed, in general the same strings for the
+patterns are often used in several places within the configuration
+file.  So it is helpful to define auxiliary configuration variables
+for them and use those instead.  The example configuration file in the
+\embeddedCode{misc} subdirectory of the distribution uses that
+technique extensively.
 
 %==================
 \chapter{Demo Song}
